@@ -34,7 +34,7 @@ describe('Auth State', () => {
 
   it('should export auth functions', async () => {
     const authModule = await import('../../src/state/auth')
-    
+
     expect(authModule.signIn).toBeDefined()
     expect(authModule.signUp).toBeDefined()
     expect(authModule.signOut).toBeDefined()
@@ -45,7 +45,7 @@ describe('Auth State', () => {
 
   it('should have reactive state', async () => {
     const authModule = await import('../../src/state/auth')
-    
+
     expect(authModule.user).toBeDefined()
     expect(authModule.profile).toBeDefined()
     expect(authModule.isAuthenticated).toBeDefined()

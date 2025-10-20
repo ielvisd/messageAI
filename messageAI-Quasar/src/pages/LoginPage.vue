@@ -63,10 +63,10 @@ const onSubmit = async () => {
   }
 
   loading.value = true
-  
+
   try {
     const { error } = await signIn(email.value, password.value)
-    
+
     if (error) {
       $q.notify({
         type: 'negative',

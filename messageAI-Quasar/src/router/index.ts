@@ -37,15 +37,15 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   // Add navigation guards
   Router.beforeEach((to, from, next) => {
     const { requireAuth, requireGuest } = useAuthGuard()
-    
+
     if (to.meta.requiresAuth && !requireAuth()) {
       return
     }
-    
+
     if (to.meta.requiresGuest && !requireGuest()) {
       return
     }
-    
+
     next()
   });
 
