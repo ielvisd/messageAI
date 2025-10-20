@@ -67,10 +67,41 @@ const onSubmit = async () => {
     const { error } = await signIn(email.value, password.value)
 
     if (error) {
-      Notify.create({
+      // Handle specific error types
+      let errorMessage = 'Login failed'
+      const errorObj = error as Error
+
+      if (errorObj.message === 'Email not confirmed') {
+        errorMessage = 'Please check your email and click the confirmation link before logging in.'
+      } else if (errorObj.message === 'Invalid login credentials') {
+        errorMessage = 'Invalid email or password. Please try again.'
+      } else if (errorObj.message) {
+        errorMessage = errorObj.message
+      }
+
+      const notifyOptions: Record<string, unknown> = {
         type: 'negative',
-        message: (error as Error).message || 'Login failed'
-      })
+        message: errorMessage,
+        timeout: 5000
+      }
+
+      if (errorObj.message === 'Email not confirmed') {
+        notifyOptions.actions = [
+          {
+            label: 'Resend Email',
+            color: 'white',
+            handler: () => {
+              // TODO: Implement resend confirmation email
+              Notify.create({
+                type: 'info',
+                message: 'Resend functionality coming soon!'
+              })
+            }
+          }
+        ]
+      }
+
+      Notify.create(notifyOptions)
     } else {
       Notify.create({
         type: 'positive',
@@ -78,10 +109,11 @@ const onSubmit = async () => {
       })
       void router.push('/chats')
     }
-  } catch {
+  } catch (err) {
+    console.error('Login error:', err)
     Notify.create({
       type: 'negative',
-      message: 'An unexpected error occurred'
+      message: 'An unexpected error occurred. Please try again.'
     })
   } finally {
     loading.value = false

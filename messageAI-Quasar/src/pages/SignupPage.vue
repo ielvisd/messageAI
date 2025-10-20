@@ -81,21 +81,49 @@ const onSubmit = async () => {
     const { error } = await signUp(email.value, password.value, name.value)
 
     if (error) {
+      // Handle specific error types
+      let errorMessage = 'Signup failed'
+      const errorObj = error as Error
+
+      if (errorObj.message === 'User already registered') {
+        errorMessage = 'An account with this email already exists. Please try logging in instead.'
+      } else if (errorObj.message === 'Password should be at least 6 characters') {
+        errorMessage = 'Password must be at least 6 characters long.'
+      } else if (errorObj.message) {
+        errorMessage = errorObj.message
+      }
+
       Notify.create({
         type: 'negative',
-        message: (error as Error).message || 'Signup failed'
+        message: errorMessage,
+        timeout: 5000
       })
     } else {
       Notify.create({
         type: 'positive',
-        message: 'Signup successful! Please check your email to verify your account.'
+        message: 'Signup successful! Please check your email and click the confirmation link to verify your account.',
+        timeout: 8000,
+        actions: [
+          {
+            label: 'Check Email',
+            color: 'white',
+            handler: () => {
+              // Open email client or show instructions
+              Notify.create({
+                type: 'info',
+                message: 'Please check your email inbox (including spam folder) for the confirmation link.'
+              })
+            }
+          }
+        ]
       })
       void router.push('/chats')
     }
-  } catch {
+  } catch (err) {
+    console.error('Signup error:', err)
     Notify.create({
       type: 'negative',
-      message: 'An unexpected error occurred'
+      message: 'An unexpected error occurred. Please try again.'
     })
   } finally {
     loading.value = false

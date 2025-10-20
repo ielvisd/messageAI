@@ -22,6 +22,14 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/auth/callback',
+    component: () => import('layouts/AuthLayout.vue'),
+    meta: { requiresGuest: true },
+    children: [
+      { path: '', component: () => import('pages/AuthCallbackPage.vue') }
+    ]
+  },
+  {
     path: '/chats',
     component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },

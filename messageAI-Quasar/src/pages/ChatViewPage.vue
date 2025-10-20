@@ -65,7 +65,7 @@
         :bg-color="getMessageBgColor"
         class="col"
       />
-      
+
       <!-- Empty State -->
       <div v-else class="column items-center justify-center q-py-xl">
         <q-icon name="chat" size="60px" color="grey-5" />
@@ -146,15 +146,15 @@ import { Notify } from 'quasar'
 const route = useRoute()
 const chatId = route.params.id as string
 
-const { 
-  messages, 
-  chatInfo, 
-  loading, 
-  error, 
-  sending, 
-  loadMessages, 
-  sendMessage, 
-  markAsRead 
+const {
+  messages,
+  chatInfo,
+  loading,
+  error,
+  sending,
+  loadMessages,
+  sendMessage,
+  markAsRead
 } = useChat(chatId)
 
 const newMessage = ref('')
@@ -164,9 +164,9 @@ const formattedMessages = computed(() => {
   return messages.value.map((msg: Message) => ({
     text: msg.content,
     sent: msg.sender_id === user.value?.id,
-    timestamp: new Date(msg.created_at).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    timestamp: new Date(msg.created_at).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     }),
     name: msg.sender_name,
     avatar: msg.sender_avatar,
