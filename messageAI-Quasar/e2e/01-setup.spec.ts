@@ -16,10 +16,10 @@ test.describe('PR1: Project Setup', () => {
 
     // Wait for the page to load completely
     await page.waitForLoadState('networkidle');
-    
+
     // Verify no critical errors occurred
-    expect(errors.filter(error => 
-      !error.includes('favicon') && 
+    expect(errors.filter(error =>
+      !error.includes('favicon') &&
       !error.includes('404') &&
       !error.includes('Failed to load resource')
     )).toHaveLength(0);
@@ -28,14 +28,14 @@ test.describe('PR1: Project Setup', () => {
   test('routing structure is accessible', async ({ page }) => {
     // Test that all main routes are accessible
     const routes = ['/login', '/signup', '/chats'];
-    
+
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState('networkidle');
-      
+
       // Verify the page loaded (not 404)
       expect(page.url()).toContain(route);
-      
+
       // Check that the page has content (not blank)
       const body = await page.locator('body');
       await expect(body).toBeVisible();
@@ -46,10 +46,10 @@ test.describe('PR1: Project Setup', () => {
     // Check that Supabase is properly initialized
     const supabaseInitialized = await page.evaluate(() => {
       // Check if Supabase client is available
-      return typeof window !== 'undefined' && 
+      return typeof window !== 'undefined' &&
              (window as any).supabase !== undefined;
     });
-    
+
     expect(supabaseInitialized).toBe(true);
   });
 
@@ -60,7 +60,7 @@ test.describe('PR1: Project Setup', () => {
       const quasarElements = document.querySelectorAll('[class*="q-"]');
       return quasarElements.length > 0;
     });
-    
+
     expect(quasarLoaded).toBe(true);
   });
 
@@ -71,7 +71,7 @@ test.describe('PR1: Project Setup', () => {
       const app = document.querySelector('#q-app');
       return app !== null;
     });
-    
+
     expect(vueMounted).toBe(true);
   });
 
@@ -79,11 +79,11 @@ test.describe('PR1: Project Setup', () => {
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/login');
-    
+
     // Check that the page is responsive
     const loginForm = page.locator('form');
     await expect(loginForm).toBeVisible();
-    
+
     // Check that elements are properly sized for mobile
     const inputs = page.locator('input');
     const inputCount = await inputs.count();
@@ -94,7 +94,7 @@ test.describe('PR1: Project Setup', () => {
     // Check that static assets are loaded
     const response = await page.goto('/');
     expect(response?.status()).toBe(200);
-    
+
     // Check for essential assets
     const html = await page.content();
     expect(html).toContain('<!DOCTYPE html>');
