@@ -6,26 +6,26 @@
           <q-spinner-dots size="40px" color="primary" />
           <div class="q-mt-md">Confirming your email...</div>
         </div>
-        
+
         <div v-else-if="error" class="text-negative">
           <q-icon name="error" size="40px" class="q-mb-md" />
           <div class="text-h6 q-mb-sm">Confirmation Failed</div>
           <div class="text-body2">{{ error }}</div>
-          <q-btn 
-            color="primary" 
-            label="Try Again" 
+          <q-btn
+            color="primary"
+            label="Try Again"
             class="q-mt-md"
             @click="retryConfirmation"
           />
         </div>
-        
+
         <div v-else class="text-positive">
           <q-icon name="check_circle" size="40px" class="q-mb-md" />
           <div class="text-h6 q-mb-sm">Email Confirmed!</div>
           <div class="text-body2">Your account has been verified successfully.</div>
-          <q-btn 
-            color="primary" 
-            label="Continue to App" 
+          <q-btn
+            color="primary"
+            label="Continue to App"
             class="q-mt-md"
             @click="goToChats"
           />

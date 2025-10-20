@@ -158,8 +158,8 @@ test.describe('iOS Simulator - Critical Path', () => {
     // Check that Capacitor plugins are available
     const capacitorAvailable = await page.evaluate(() => {
       return typeof window !== 'undefined' && 
-             window.Capacitor !== undefined &&
-             window.Capacitor.isNativePlatform() === true;
+             (window as any).Capacitor !== undefined &&
+             (window as any).Capacitor.isNativePlatform() === true;
     });
     
     expect(capacitorAvailable).toBe(true);

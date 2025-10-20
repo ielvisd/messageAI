@@ -47,7 +47,7 @@ test.describe('PR1: Project Setup', () => {
     const supabaseInitialized = await page.evaluate(() => {
       // Check if Supabase client is available
       return typeof window !== 'undefined' && 
-             window.supabase !== undefined;
+             (window as any).supabase !== undefined;
     });
     
     expect(supabaseInitialized).toBe(true);
