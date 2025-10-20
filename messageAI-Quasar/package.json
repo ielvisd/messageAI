@@ -47,6 +47,7 @@
     "globals": "^16.4.0",
     "jsdom": "^27.0.1",
     "prettier": "^3.3.3",
+    "supabase": "^2.51.0",
     "typescript": "^5.9.2",
     "vite-plugin-checker": "^0.11.0",
     "vite-plugin-vue-mcp": "^0.3.2",

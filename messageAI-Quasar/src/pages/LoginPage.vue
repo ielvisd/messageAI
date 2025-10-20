@@ -18,12 +18,14 @@
               :rules="[val => !!val || 'Password is required']"
             />
             <div class="q-gutter-sm">
-              <q-btn
-                type="submit"
-                color="primary"
-                label="Login"
-                class="full-width"
-              />
+            <q-btn
+              type="submit"
+              color="primary"
+              label="Login"
+              class="full-width"
+              :loading="loading"
+              :disable="loading"
+            />
               <q-btn
                 flat
                 color="primary"
@@ -42,15 +44,48 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { signIn } from '../state/auth'
+import { useQuasar } from 'quasar'
 
 const router = useRouter()
+const $q = useQuasar()
 const email = ref('')
 const password = ref('')
+const loading = ref(false)
 
-const onSubmit = () => {
-  // TODO: Implement login logic
-  console.log('Login attempt:', { email: email.value, password: password.value })
-  // For now, redirect to chats
-  void router.push('/chats')
+const onSubmit = async () => {
+  if (!email.value || !password.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'Please fill in all fields'
+    })
+    return
+  }
+
+  loading.value = true
+  
+  try {
+    const { error } = await signIn(email.value, password.value)
+    
+    if (error) {
+      $q.notify({
+        type: 'negative',
+        message: (error as Error).message || 'Login failed'
+      })
+    } else {
+      $q.notify({
+        type: 'positive',
+        message: 'Login successful!'
+      })
+      void router.push('/chats')
+    }
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'An unexpected error occurred'
+    })
+  } finally {
+    loading.value = false
+  }
 }
 </script>
