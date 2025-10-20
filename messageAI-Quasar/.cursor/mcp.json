@@ -1,7 +1,9 @@
 {
   "mcpServers": {
-    "Quasar Docs": {
-      "url": "https://gitmcp.io/quasarframework/quasar"
+    "GitMCP Quasar": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-git", "--repository", "https://github.com/quasarframework/quasar.git"],
+      "env": {}
     }
   }
 }

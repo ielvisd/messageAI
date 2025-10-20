@@ -7,13 +7,19 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/login',
-    component: () => import('pages/LoginPage.vue'),
-    meta: { requiresGuest: true }
+    component: () => import('layouts/AuthLayout.vue'),
+    meta: { requiresGuest: true },
+    children: [
+      { path: '', component: () => import('pages/LoginPage.vue') }
+    ]
   },
   {
     path: '/signup',
-    component: () => import('pages/SignupPage.vue'),
-    meta: { requiresGuest: true }
+    component: () => import('layouts/AuthLayout.vue'),
+    meta: { requiresGuest: true },
+    children: [
+      { path: '', component: () => import('pages/SignupPage.vue') }
+    ]
   },
   {
     path: '/chats',
