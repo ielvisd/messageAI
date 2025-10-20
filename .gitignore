@@ -44,3 +44,4 @@ build/
 
 # iOS specific
 ios/App/App/public/
+messageAI-Quasar/.env
