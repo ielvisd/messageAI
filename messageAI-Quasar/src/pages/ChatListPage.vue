@@ -61,7 +61,7 @@
               <img v-if="chat.type === 'direct' && chat.members[0]?.avatar_url" :src="chat.members[0].avatar_url" />
             </q-avatar>
           </q-item-section>
-          
+
           <q-item-section>
             <q-item-label class="text-weight-medium">
               {{ chat.name }}
@@ -73,7 +73,7 @@
               <span v-else>No messages yet</span>
             </q-item-label>
           </q-item-section>
-          
+
           <q-item-section side top>
             <div class="text-caption text-grey-5">
               {{ formatTime(chat.last_message?.created_at || chat.updated_at) }}
@@ -104,7 +104,7 @@
               :rules="[val => !!val || 'Name is required']"
               class="q-mb-md"
             />
-            
+
             <q-select
               v-model="newChatType"
               :options="chatTypeOptions"
@@ -185,7 +185,7 @@ const chatTypeOptions = [
 const selectChat = async (chat: Chat) => {
   // Mark as read
   await markAsRead(chat.id)
-  
+
   // Navigate to chat
   void router.push(`/chat/${chat.id}`)
 }
@@ -194,12 +194,12 @@ const formatTime = (dateString: string) => {
   const date = new Date(dateString)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
-  
+
   if (diff < 60000) return 'now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}d`
-  
+
   return date.toLocaleDateString()
 }
 
@@ -238,17 +238,17 @@ const handleCreateChat = async () => {
   if (!newChatName.value) return
 
   creating.value = true
-  
+
   try {
     const memberIds = selectedMembers.value.map(m => m.id)
     const chat = await createChat(newChatName.value, newChatType.value as 'direct' | 'group', memberIds)
-    
+
     if (chat) {
       $q.notify({
         type: 'positive',
         message: 'Chat created successfully!'
       })
-      
+
       // Reset form
       showCreateChat.value = false
       newChatName.value = ''

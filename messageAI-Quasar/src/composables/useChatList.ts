@@ -71,7 +71,7 @@ export function useChatList() {
       // Get last messages and unread counts for each chat
       const chatPromises = chatMembers?.map(async (member) => {
         const chat = Array.isArray(member.chats) ? member.chats[0] : member.chats
-        
+
         if (!chat) {
           throw new Error('Chat not found')
         }
@@ -129,7 +129,7 @@ export function useChatList() {
       }) || []
 
       const chatData = await Promise.all(chatPromises)
-      
+
       // Sort by last message time or creation time
       chats.value = chatData as Chat[]
       chats.value.sort((a, b) => {
@@ -178,7 +178,7 @@ export function useChatList() {
 
       // Reload chats to include the new one
       void loadChats()
-      
+
       return chat as Chat
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create chat'
@@ -219,7 +219,7 @@ export function useChatList() {
     if (user.value) {
       subscription = supabase
         .channel('chat-list-updates')
-        .on('postgres_changes', 
+        .on('postgres_changes',
           { event: '*', schema: 'public', table: 'messages' },
           () => {
             // Reload chats when messages change
