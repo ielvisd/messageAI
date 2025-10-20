@@ -71,15 +71,44 @@
 - Comprehensive error handling and loading states
 - TypeScript interfaces and form validation
 
-### PR4: feat/messaging-core
+### PR4: feat/messaging-core ✅ COMPLETED
 
-- [ ] Create messages table with timestamp, status fields
-- [ ] Build `composables/useChat.js` with messages ref, send function
-- [ ] Create ChatView.vue with QChatMessage bubbles
-- [ ] Implement QInput send functionality
-- [ ] Add Luxon timestamps with TZ awareness
-- [ ] Optimistic UI: messages show as 'sending' → 'sent'
-- [ ] **Tests**: useChat composable tests, optimistic send flow
+- [x] Create messages table with timestamp, status fields
+- [x] Build `composables/useChat.js` with messages ref, send function
+- [x] Create ChatView.vue with QChatMessage bubbles
+- [x] Implement QInput send functionality
+- [x] Add Luxon timestamps with TZ awareness
+- [x] Optimistic UI: messages show as 'sending' → 'sent'
+- [x] **Tests**: useChat composable tests, optimistic send flow
+
+**Status**: ✅ COMPLETED - Full messaging functionality with real-time updates
+**Commit**: `d03598f` - Merge PR4: feat/messaging-core - Complete messaging system
+**Next**: Ready for PR5: feat/realtime-sync
+
+**Features Implemented**:
+- Real-time message sending and receiving via Supabase
+- Optimistic UI for instant message display
+- Message status tracking (sending, sent, delivered, read)
+- Modern chat UI with QChat component and message bubbles
+- Chat header with member information and navigation
+- Proper error handling and loading states
+- TypeScript type safety throughout
+- Fixed QPage layout error with AuthLayout
+
+### Web Test 4.5: feat/web-testing
+
+- [ ] Test complete app flow in web browser
+- [ ] Verify login/signup functionality works
+- [ ] Test chat list loading and navigation
+- [ ] Test message sending and receiving
+- [ ] Verify real-time updates work
+- [ ] Test responsive design on different screen sizes
+- [ ] Fix any web-specific issues found
+- [ ] **Tests**: Full web app testing, cross-browser compatibility
+
+**Status**: 🔄 IN PROGRESS - Web testing and validation
+**Branch**: `web-test-4.5`
+**Goal**: Ensure app works perfectly in web browser before mobile
 
 ### PR5: feat/realtime-sync
 
@@ -270,7 +299,7 @@
 - [x] PR1: feat/project-setup - Initialize Quasar, Capacitor, Supabase, dev tools ✅ COMPLETED
 - [x] PR2: feat/auth - Authentication system with profiles ✅ COMPLETED
 - [x] PR3: feat/chat-list - Chat list UI and navigation ✅ COMPLETED
-- [ ] PR4: feat/messaging-core - Core messaging with optimistic UI
+- [x] PR4: feat/messaging-core - Core messaging with optimistic UI ✅ COMPLETED
 - [ ] PR5: feat/realtime-sync - Supabase Realtime integration
 - [ ] PR6: feat/offline-handling - Offline persistence and sync
 - [ ] PR7: feat/status-indicators - Online/offline status system
