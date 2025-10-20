@@ -50,10 +50,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signUp } from '../state/auth'
-import { useQuasar } from 'quasar'
+import { Notify } from 'quasar'
 
 const router = useRouter()
-const $q = useQuasar()
 const name = ref('')
 const email = ref('')
 const password = ref('')
@@ -61,7 +60,7 @@ const loading = ref(false)
 
 const onSubmit = async () => {
   if (!name.value || !email.value || !password.value) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Please fill in all fields'
     })
@@ -69,7 +68,7 @@ const onSubmit = async () => {
   }
 
   if (password.value.length < 6) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Password must be at least 6 characters'
     })
@@ -82,19 +81,19 @@ const onSubmit = async () => {
     const { error } = await signUp(email.value, password.value, name.value)
 
     if (error) {
-      $q.notify({
+      Notify.create({
         type: 'negative',
         message: (error as Error).message || 'Signup failed'
       })
     } else {
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Signup successful! Please check your email to verify your account.'
       })
       void router.push('/chats')
     }
   } catch {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'An unexpected error occurred'
     })

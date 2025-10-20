@@ -45,17 +45,16 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signIn } from '../state/auth'
-import { useQuasar } from 'quasar'
+import { Notify } from 'quasar'
 
 const router = useRouter()
-const $q = useQuasar()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 
 const onSubmit = async () => {
   if (!email.value || !password.value) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Please fill in all fields'
     })
@@ -68,19 +67,19 @@ const onSubmit = async () => {
     const { error } = await signIn(email.value, password.value)
 
     if (error) {
-      $q.notify({
+      Notify.create({
         type: 'negative',
         message: (error as Error).message || 'Login failed'
       })
     } else {
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Login successful!'
       })
       void router.push('/chats')
     }
   } catch {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'An unexpected error occurred'
     })
