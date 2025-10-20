@@ -20,7 +20,7 @@ export async function signIn(email: string, password: string) {
     user.value = data.user
     await loadProfile()
 
-    return { data, error: null }
+    return { error: null }
   } catch (error) {
     console.error('Sign in error:', error)
     return { data: null, error }
@@ -44,7 +44,7 @@ export async function signUp(email: string, password: string, name: string) {
     user.value = data.user
     // Profile will be created automatically by the trigger
 
-    return { data, error: null }
+    return { error: null }
   } catch (error) {
     console.error('Sign up error:', error)
     return { data: null, error }
