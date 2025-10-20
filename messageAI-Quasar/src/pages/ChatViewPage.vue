@@ -139,12 +139,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useQuasar } from 'quasar'
 import { useChat, type Message } from '../composables/useChat'
 import { user } from '../state/auth'
+import { Notify } from 'quasar'
 
 const route = useRoute()
-const $q = useQuasar()
 const chatId = route.params.id as string
 
 const { 
@@ -196,7 +195,7 @@ const handleSendMessage = async () => {
   try {
     await sendMessage(messageText)
   } catch {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Failed to send message'
     })

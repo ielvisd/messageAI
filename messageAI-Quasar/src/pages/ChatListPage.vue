@@ -161,12 +161,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
 import { useChatList, type Chat } from '../composables/useChatList'
 import { supabase } from '../boot/supabase'
+import { Notify } from 'quasar'
 
 const router = useRouter()
-const $q = useQuasar()
 const { chats, loading, error, loadChats, createChat, markAsRead } = useChatList()
 
 // Create chat dialog state
@@ -216,18 +215,18 @@ const addMember = async () => {
     if (profile) {
       selectedMembers.value.push(profile)
       memberEmail.value = ''
-    } else {
-      $q.notify({
-        type: 'negative',
-        message: 'User not found'
-      })
-    }
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to find user'
-    })
-  }
+        } else {
+          Notify.create({
+            type: 'negative',
+            message: 'User not found'
+          })
+        }
+      } catch {
+        Notify.create({
+          type: 'negative',
+          message: 'Failed to find user'
+        })
+      }
 }
 
 const removeMember = (memberId: string) => {
@@ -243,23 +242,23 @@ const handleCreateChat = async () => {
     const memberIds = selectedMembers.value.map(m => m.id)
     const chat = await createChat(newChatName.value, newChatType.value as 'direct' | 'group', memberIds)
 
-    if (chat) {
-      $q.notify({
-        type: 'positive',
-        message: 'Chat created successfully!'
-      })
+        if (chat) {
+          Notify.create({
+            type: 'positive',
+            message: 'Chat created successfully!'
+          })
 
-      // Reset form
-      showCreateChat.value = false
-      newChatName.value = ''
-      newChatType.value = 'direct'
-      selectedMembers.value = []
-    }
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to create chat'
-    })
+          // Reset form
+          showCreateChat.value = false
+          newChatName.value = ''
+          newChatType.value = 'direct'
+          selectedMembers.value = []
+        }
+      } catch {
+        Notify.create({
+          type: 'negative',
+          message: 'Failed to create chat'
+        })
   } finally {
     creating.value = false
   }
