@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref } from 'vue'
 
 // Mock Supabase using factory function
 vi.mock('../boot/supabase', () => ({
@@ -46,7 +45,7 @@ describe('Authentication State Management', () => {
     })
 
     it('should update isAuthenticated when user changes', () => {
-      user.value = { id: 'test-id', email: 'test@example.com' } as any
+      user.value = { id: 'test-id', email: 'test@example.com' } as Record<string, unknown>
       expect(isAuthenticated.value).toBe(true)
 
       user.value = null
@@ -80,7 +79,7 @@ describe('Authentication State Management', () => {
     it('should compute isAuthenticated correctly', () => {
       expect(isAuthenticated.value).toBe(false)
 
-      user.value = { id: 'test-id' } as any
+      user.value = { id: 'test-id' } as Record<string, unknown>
       expect(isAuthenticated.value).toBe(true)
 
       user.value = null
