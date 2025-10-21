@@ -1,16 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { VueMcp } from 'vite-plugin-vue-mcp'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [
-    vue()
-    // TODO: Add MCP plugin when import issue is resolved
-    // vueMCP({
-    //   server: {
-    //     port: 3001
-    //   }
-    // })
+    vue(),
+    VueMcp({
+      printUrl: true,
+      updateCursorMcpJson: true
+    })
   ],
   resolve: {
     alias: {

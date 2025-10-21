@@ -3,6 +3,7 @@
 
 import { defineConfig } from '#q-app/wrappers';
 import { fileURLToPath } from 'node:url';
+import { VueMcp } from 'vite-plugin-vue-mcp';
 
 export default defineConfig((ctx) => {
   return {
@@ -91,6 +92,14 @@ export default defineConfig((ctx) => {
             },
           },
           { server: false },
+        ],
+
+        [
+          VueMcp,
+          {
+            printUrl: true,
+            updateCursorMcpJson: true
+          }
         ],
       ],
     },

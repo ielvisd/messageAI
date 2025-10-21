@@ -87,7 +87,7 @@ export function useChatList() {
           .eq('chat_id', chat.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single() as { data: LastMessage | null }
+          .maybeSingle() as { data: LastMessage | null }
 
         // Get unread count
         const { count: unreadCount } = await supabase
@@ -150,6 +150,27 @@ export function useChatList() {
     if (!user.value) return null
 
     try {
+      // Debug: Log the user info
+      console.log('Creating chat for user:', user.value.id, user.value.email)
+
+      // Check current auth session
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Current session:', session?.user?.id, session?.user?.email)
+
+      // Ensure user has a profile before creating chat
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.value.id)
+        .single()
+
+      if (profileError) {
+        console.error('Profile not found for user:', user.value.id, profileError)
+        throw new Error('User profile not found. Please refresh and try again.')
+      }
+
+      console.log('Profile check passed, attempting to create chat...')
+
       const { data: chat, error: chatError } = await supabase
         .from('chats')
         .insert({
@@ -160,7 +181,10 @@ export function useChatList() {
         .select()
         .single()
 
-      if (chatError) throw chatError
+      if (chatError) {
+        console.error('Chat creation failed:', chatError)
+        throw chatError
+      }
 
       // Add members to chat
       if (memberIds.length > 0) {

@@ -57,14 +57,31 @@
 
     <!-- Chat Messages -->
     <div v-else class="col column">
-      <q-chat
-        v-if="messages.length > 0"
-        :messages="formattedMessages"
-        :sent="isMessageSent"
-        :text-color="getMessageTextColor"
-        :bg-color="getMessageBgColor"
-        class="col"
-      />
+      <div v-if="messages.length > 0" class="col q-pa-md" style="overflow-y: auto;">
+        <div
+          v-for="(message, index) in formattedMessages"
+          :key="index"
+          class="q-mb-md"
+          :class="{ 'row justify-end': message.sent, 'row justify-start': !message.sent }"
+        >
+          <div
+            class="message-bubble"
+            :class="{
+              'bg-primary text-white': message.sent,
+              'bg-grey-3 text-black': !message.sent
+            }"
+            style="max-width: 70%; border-radius: 18px; padding: 12px 16px;"
+          >
+            <div class="text-body2">{{ message.text }}</div>
+            <div
+              class="text-caption q-mt-xs"
+              :class="message.sent ? 'text-blue-1' : 'text-grey-6'"
+            >
+              {{ message.timestamp }}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Empty State -->
       <div v-else class="column items-center justify-center q-py-xl">
@@ -174,17 +191,6 @@ const formattedMessages = computed(() => {
   }))
 })
 
-const isMessageSent = (message: { sent: boolean }) => {
-  return message.sent
-}
-
-const getMessageTextColor = (message: { sent: boolean }) => {
-  return message.sent ? 'white' : 'black'
-}
-
-const getMessageBgColor = (message: { sent: boolean }) => {
-  return message.sent ? 'primary' : 'grey-3'
-}
 
 const handleSendMessage = async () => {
   if (!newMessage.value.trim() || sending.value) return
@@ -216,8 +222,8 @@ watch(messages, () => {
 </script>
 
 <style scoped>
-.q-chat {
-  height: 100%;
-  overflow-y: auto;
+.message-bubble {
+  word-wrap: break-word;
+  word-break: break-word;
 }
 </style>
