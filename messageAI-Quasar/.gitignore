@@ -32,3 +32,9 @@ yarn-error.log*
 # Environment files
 .env*
 !.env.example
+
+# Test results and reports
+/test-results/
+/playwright-report/
+/coverage/
+*.lcov
