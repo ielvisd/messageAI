@@ -92,7 +92,7 @@ test.describe('PR3: Chat List', () => {
     await page.route('**/rest/v1/messages*', route => {
       const url = new URL(route.request().url());
       const chatId = url.searchParams.get('chat_id');
-      
+
       if (chatId === 'chat-1') {
         route.fulfill({
           status: 200,
@@ -135,7 +135,7 @@ test.describe('PR3: Chat List', () => {
     });
 
     await page.reload();
-    
+
     await expect(page.locator('text=No chats yet')).toBeVisible();
     await expect(page.locator('text=Start a conversation!')).toBeVisible();
     await expect(page.locator('text=Create Chat')).toBeVisible();
@@ -144,13 +144,13 @@ test.describe('PR3: Chat List', () => {
   test('create chat dialog opens and closes', async ({ page }) => {
     // Click add chat button
     await page.click('button[aria-label="Add chat"]');
-    
+
     // Check dialog opens
     await expect(page.locator('text=Create New Chat')).toBeVisible();
     await expect(page.locator('input[placeholder*="Chat Name"]')).toBeVisible();
     await expect(page.locator('text=Chat Type')).toBeVisible();
     await expect(page.locator('text=Add Members')).toBeVisible();
-    
+
     // Close dialog
     await page.click('text=Cancel');
     await expect(page.locator('text=Create New Chat')).not.toBeVisible();
@@ -158,12 +158,12 @@ test.describe('PR3: Chat List', () => {
 
   test('chat creation (direct message)', async ({ page }) => {
     await page.click('button[aria-label="Add chat"]');
-    
+
     // Fill form
     await page.fill('input[placeholder*="Chat Name"]', 'New Direct Chat');
     await page.selectOption('select', 'direct');
     await page.fill('input[placeholder*="Member Email"]', 'friend@example.com');
-    
+
     // Mock member lookup
     await page.route('**/rest/v1/profiles*', route => {
       const url = new URL(route.request().url());
@@ -185,9 +185,9 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('button[aria-label="Add member"]');
-    
+
     // Mock chat creation
     await page.route('**/rest/v1/chats', route => {
       if (route.request().method() === 'POST') {
@@ -203,7 +203,7 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.route('**/rest/v1/chat_members', route => {
       if (route.request().method() === 'POST') {
         route.fulfill({
@@ -213,24 +213,24 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('text=Create');
-    
+
     // Check success notification
     await expect(page.locator('text=Chat created successfully!')).toBeVisible();
-    
+
     // Dialog should close
     await expect(page.locator('text=Create New Chat')).not.toBeVisible();
   });
 
   test('chat creation (group chat)', async ({ page }) => {
     await page.click('button[aria-label="Add chat"]');
-    
+
     // Fill form for group chat
     await page.fill('input[placeholder*="Chat Name"]', 'New Group Chat');
     await page.selectOption('select', 'group');
     await page.fill('input[placeholder*="Member Email"]', 'member1@example.com');
-    
+
     // Mock member lookup
     await page.route('**/rest/v1/profiles*', route => {
       const url = new URL(route.request().url());
@@ -252,9 +252,9 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('button[aria-label="Add member"]');
-    
+
     // Add another member
     await page.fill('input[placeholder*="Member Email"]', 'member2@example.com');
     await page.route('**/rest/v1/profiles*', route => {
@@ -277,13 +277,13 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('button[aria-label="Add member"]');
-    
+
     // Check that both members are added
     await expect(page.locator('text=Member One')).toBeVisible();
     await expect(page.locator('text=Member Two')).toBeVisible();
-    
+
     // Mock chat creation
     await page.route('**/rest/v1/chats', route => {
       if (route.request().method() === 'POST') {
@@ -299,7 +299,7 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.route('**/rest/v1/chat_members', route => {
       if (route.request().method() === 'POST') {
         route.fulfill({
@@ -309,19 +309,19 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('text=Create');
-    
+
     // Check success notification
     await expect(page.locator('text=Chat created successfully!')).toBeVisible();
   });
 
   test('member selection in create dialog', async ({ page }) => {
     await page.click('button[aria-label="Add chat"]');
-    
+
     // Try to add a member
     await page.fill('input[placeholder*="Member Email"]', 'nonexistent@example.com');
-    
+
     // Mock user not found
     await page.route('**/rest/v1/profiles*', route => {
       route.fulfill({
@@ -330,9 +330,9 @@ test.describe('PR3: Chat List', () => {
         body: JSON.stringify([])
       });
     });
-    
+
     await page.click('button[aria-label="Add member"]');
-    
+
     // Check error message
     await expect(page.locator('text=User not found')).toBeVisible();
   });
@@ -341,12 +341,12 @@ test.describe('PR3: Chat List', () => {
     // Initially should show existing chats
     await expect(page.locator('text=Direct Message')).toBeVisible();
     await expect(page.locator('text=Team Chat')).toBeVisible();
-    
+
     // Create new chat
     await page.click('button[aria-label="Add chat"]');
     await page.fill('input[placeholder*="Chat Name"]', 'Updated Chat List');
     await page.selectOption('select', 'direct');
-    
+
     // Mock chat creation
     await page.route('**/rest/v1/chats', route => {
       if (route.request().method() === 'POST') {
@@ -362,7 +362,7 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.route('**/rest/v1/chat_members', route => {
       if (route.request().method() === 'POST') {
         route.fulfill({
@@ -372,9 +372,9 @@ test.describe('PR3: Chat List', () => {
         });
       }
     });
-    
+
     await page.click('text=Create');
-    
+
     // After creation, the chat list should reload
     // In a real implementation, this would happen automatically
     // For now, we just verify the creation was successful
@@ -384,7 +384,7 @@ test.describe('PR3: Chat List', () => {
   test('navigation to chat view on click', async ({ page }) => {
     // Click on first chat
     await page.click('text=Direct Message');
-    
+
     // Should navigate to chat view
     await expect(page).toHaveURL(/\/chat\/chat-1/);
   });
@@ -392,7 +392,7 @@ test.describe('PR3: Chat List', () => {
   test('unread count displays correctly', async ({ page }) => {
     // Check that unread count is displayed
     await expect(page.locator('text=2')).toBeVisible(); // Unread count for first chat
-    
+
     // Second chat should have no unread count visible
     const secondChat = page.locator('text=Team Chat').locator('..');
     await expect(secondChat.locator('text=0')).not.toBeVisible();
@@ -401,10 +401,10 @@ test.describe('PR3: Chat List', () => {
   test('real-time chat list updates', async ({ page }) => {
     // This would test real-time updates via Supabase subscriptions
     // For now, we'll test that the subscription setup doesn't break the page
-    
+
     // Wait for page to load completely
     await page.waitForLoadState('networkidle');
-    
+
     // Verify the page is still functional
     await expect(page.locator('text=Chats')).toBeVisible();
   });
@@ -418,13 +418,13 @@ test.describe('PR3: Chat List', () => {
         body: JSON.stringify({ error: 'Internal server error' })
       });
     });
-    
+
     await page.reload();
-    
+
     // Check error state
     await expect(page.locator('text=Failed to load chats')).toBeVisible();
     await expect(page.locator('text=Retry')).toBeVisible();
-    
+
     // Mock successful response for retry
     await page.route('**/rest/v1/chat_members*', route => {
       route.fulfill({
@@ -433,10 +433,10 @@ test.describe('PR3: Chat List', () => {
         body: JSON.stringify([])
       });
     });
-    
+
     // Click retry
     await page.click('text=Retry');
-    
+
     // Should show empty state
     await expect(page.locator('text=No chats yet')).toBeVisible();
   });
@@ -444,13 +444,13 @@ test.describe('PR3: Chat List', () => {
   test('chat list displays with correct information', async ({ page }) => {
     // Check that chat information is displayed correctly
     const firstChat = page.locator('text=Direct Message').locator('..');
-    
+
     // Check last message preview
     await expect(firstChat.locator('text=John Doe: Hello there!')).toBeVisible();
-    
+
     // Check unread count
     await expect(firstChat.locator('text=2')).toBeVisible();
-    
+
     // Check avatar (should show person icon for direct message)
     await expect(firstChat.locator('[class*="q-avatar"]')).toBeVisible();
   });
@@ -460,7 +460,7 @@ test.describe('PR3: Chat List', () => {
     await page.click('button[aria-label="Add chat"]');
     await page.fill('input[placeholder*="Chat Name"]', 'Loading Test Chat');
     await page.selectOption('select', 'direct');
-    
+
     // Mock slow response
     await page.route('**/rest/v1/chats', route => {
       setTimeout(() => {
@@ -476,12 +476,12 @@ test.describe('PR3: Chat List', () => {
         });
       }, 1000);
     });
-    
+
     await page.click('text=Create');
-    
+
     // Check that loading state is shown
     await expect(page.locator('text=Creating...')).toBeVisible();
-    
+
     // Button should be disabled during loading
     await expect(page.locator('text=Create')).toBeDisabled();
   });

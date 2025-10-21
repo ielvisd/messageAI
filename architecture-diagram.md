@@ -76,6 +76,15 @@ graph TB
         Tools["Tool Calling<br/>(Action Extraction)"]
     end
 
+    %% Testing Layer
+    subgraph "Testing Infrastructure"
+        E2ETests["E2E Tests<br/>(Playwright)"]
+        UnitTests["Unit Tests<br/>(Vitest)"]
+        PrePushHooks["Pre-push Hooks<br/>(Husky)"]
+        TestTracking["Test Tracking<br/>(tests.md)"]
+        IOSTests["iOS Simulator Tests<br/>(Playwright webkit)"]
+    end
+
     %% External Services
     subgraph "External Services"
         FCM["Firebase Cloud Messaging<br/>(Push Notifications)"]
@@ -123,6 +132,19 @@ graph TB
     FCM --> APNs
     FCM --> PWA
 
+    %% Testing Connections
+    E2ETests --> AuthPage
+    E2ETests --> ChatList
+    E2ETests --> ChatView
+    UnitTests --> UseChat
+    UnitTests --> UseAIChat
+    UnitTests --> AuthState
+    PrePushHooks --> E2ETests
+    PrePushHooks --> UnitTests
+    IOSTests --> iOS
+    TestTracking --> E2ETests
+    TestTracking --> UnitTests
+
     %% Styling
     classDef mobileApp fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef page fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
@@ -133,6 +155,7 @@ graph TB
     classDef edge fill:#f1f8e9,stroke:#33691e,stroke-width:2px
     classDef ai fill:#fff8e1,stroke:#f57f17,stroke-width:2px
     classDef external fill:#fafafa,stroke:#424242,stroke-width:2px
+    classDef testing fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
 
     class iOS,PWA mobileApp
     class AuthPage,ChatList,ChatView,AIAssistant,SearchPage page
@@ -143,6 +166,7 @@ graph TB
     class AIExecute,AISearch,AIProactive,PushSend edge
     class VercelSDK,OpenAI,RAG,Tools ai
     class FCM,APNs external
+    class E2ETests,UnitTests,PrePushHooks,TestTracking,IOSTests testing
 ```
 
 ## Architecture Overview
@@ -180,3 +204,11 @@ graph TB
 4. **AI Processing**: Context retrieved via RAG, processed by OpenAI, streamed back to client
 5. **Push Notifications**: Database changes trigger Edge Functions to send FCM notifications (iOS via APNs, PWA via Push API)
 6. **Platform Strategy**: iOS primary for native features (background sync, reliable push), PWA secondary for web distribution and post-demo longevity
+
+### Testing Strategy
+1. **Test Pyramid**: E2E tests (critical paths) > Unit tests (composables) > Component tests (future)
+2. **Pre-push Hooks**: Husky runs lint + unit + critical E2E tests before allowing code push
+3. **E2E Coverage**: Playwright tests cover complete user journeys on web and iOS simulator
+4. **Test Tracking**: All tests tracked in `tests.md` with checkboxes for each PR feature
+5. **iOS Testing**: Playwright webkit with iOS device emulation for native feature validation
+6. **CI/CD Integration**: Future GitHub Actions workflow for automated testing on PR creation

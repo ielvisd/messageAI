@@ -10,7 +10,7 @@ test.describe('Critical Path - Complete User Journey', () => {
   test('complete user journey: signup → create chat → send message → logout → login → verify', async ({ page }) => {
     // Step 1: Sign up new user
     await page.goto('/signup');
-    
+
     // Mock successful signup
     await page.route('**/auth/v1/signup', route => {
       route.fulfill({
@@ -43,14 +43,14 @@ test.describe('Critical Path - Complete User Journey', () => {
     await page.fill('input[type="password"]', testUser.password);
     await page.fill('input[type="text"]', testUser.name);
     await page.click('button[type="submit"]');
-    
+
     // Should redirect to chats page
     await expect(page).toHaveURL('/chats');
     await expect(page.locator('text=Chats')).toBeVisible();
 
     // Step 2: Create a chat
     await page.click('button[aria-label="Add chat"]');
-    
+
     // Mock member lookup
     await page.route('**/rest/v1/profiles*', route => {
       const url = new URL(route.request().url());
@@ -77,7 +77,7 @@ test.describe('Critical Path - Complete User Journey', () => {
     await page.selectOption('select', 'direct');
     await page.fill('input[placeholder*="Member Email"]', 'friend@example.com');
     await page.click('button[aria-label="Add member"]');
-    
+
     // Mock chat creation
     await page.route('**/rest/v1/chats', route => {
       if (route.request().method() === 'POST') {
@@ -93,7 +93,7 @@ test.describe('Critical Path - Complete User Journey', () => {
         });
       }
     });
-    
+
     await page.route('**/rest/v1/chat_members', route => {
       if (route.request().method() === 'POST') {
         route.fulfill({
@@ -103,14 +103,14 @@ test.describe('Critical Path - Complete User Journey', () => {
         });
       }
     });
-    
+
     await page.click('text=Create');
     await expect(page.locator('text=Chat created successfully!')).toBeVisible();
 
     // Step 3: Send a message
     await page.click('text=Critical Test Chat');
     await expect(page).toHaveURL('/chat/critical-chat-id');
-    
+
     // Mock chat info
     await page.route('**/rest/v1/chats*', route => {
       route.fulfill({
@@ -139,9 +139,9 @@ test.describe('Critical Path - Complete User Journey', () => {
 
     const messageInput = page.locator('input[placeholder*="Type a message"]');
     const sendButton = page.locator('button[aria-label="Send message"]');
-    
+
     await messageInput.fill('Hello from critical path test!');
-    
+
     // Mock message sending
     await page.route('**/rest/v1/messages', route => {
       if (route.request().method() === 'POST') {
@@ -164,7 +164,7 @@ test.describe('Critical Path - Complete User Journey', () => {
         });
       }
     });
-    
+
     await sendButton.click();
     await expect(page.locator('text=Hello from critical path test!')).toBeVisible();
 
@@ -187,7 +187,7 @@ test.describe('Critical Path - Complete User Journey', () => {
 
     // Step 5: Log back in
     await page.goto('/login');
-    
+
     // Mock successful login
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
@@ -203,7 +203,7 @@ test.describe('Critical Path - Complete User Journey', () => {
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.click('button[type="submit"]');
-    
+
     // Should redirect to chats page
     await expect(page).toHaveURL('/chats');
 
@@ -261,12 +261,12 @@ test.describe('Critical Path - Complete User Journey', () => {
   test('cross-browser compatibility', async ({ page, browserName }) => {
     // Test that the app works across different browsers
     await page.goto('/login');
-    
+
     // Basic functionality should work in all browsers
     await expect(page.locator('text=Login to MessageAI')).toBeVisible();
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    
+
     console.log(`✅ Critical path test passed in ${browserName}`);
   });
 
@@ -274,16 +274,16 @@ test.describe('Critical Path - Complete User Journey', () => {
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/login');
-    
+
     // Check that the page is responsive
     const loginForm = page.locator('form');
     await expect(loginForm).toBeVisible();
-    
+
     // Check that elements are properly sized for mobile
     const inputs = page.locator('input');
     const inputCount = await inputs.count();
     expect(inputCount).toBeGreaterThan(0);
-    
+
     // Check that buttons are touch-friendly
     const buttons = page.locator('button');
     const buttonCount = await buttons.count();
@@ -293,21 +293,21 @@ test.describe('Critical Path - Complete User Journey', () => {
   test('offline/online transitions', async ({ page }) => {
     // Test offline functionality
     await page.goto('/login');
-    
+
     // Simulate offline
     await page.context().setOffline(true);
-    
+
     // Try to login (should show offline state)
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.click('button[type="submit"]');
-    
+
     // Should show offline error or queue message
     // This would depend on the actual implementation
-    
+
     // Simulate online
     await page.context().setOffline(false);
-    
+
     // Should be able to retry
     await page.click('button[type="submit"]');
   });
@@ -315,22 +315,22 @@ test.describe('Critical Path - Complete User Journey', () => {
   test('performance requirements', async ({ page }) => {
     // Test that the app meets performance requirements
     const startTime = Date.now();
-    
+
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
-    
+
     const loadTime = Date.now() - startTime;
-    
+
     // Should load within 2 seconds
     expect(loadTime).toBeLessThan(2000);
-    
+
     console.log(`✅ Page loaded in ${loadTime}ms`);
   });
 
   test('error handling and recovery', async ({ page }) => {
     // Test error handling
     await page.goto('/login');
-    
+
     // Mock network error
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
@@ -339,14 +339,14 @@ test.describe('Critical Path - Complete User Journey', () => {
         body: JSON.stringify({ error: 'Internal server error' })
       });
     });
-    
+
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.click('button[type="submit"]');
-    
+
     // Should show error message
     await expect(page.locator('text=Internal server error')).toBeVisible();
-    
+
     // Should allow retry
     await page.click('button[type="submit"]');
   });

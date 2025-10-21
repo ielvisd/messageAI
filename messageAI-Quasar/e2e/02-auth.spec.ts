@@ -32,7 +32,7 @@ test.describe('PR2: Authentication', () => {
   test('form validation works for empty fields', async ({ page }) => {
     // Try to submit empty form
     await page.click('button[type="submit"]');
-    
+
     // Check for validation messages
     await expect(page.locator('text=Email is required')).toBeVisible();
     await expect(page.locator('text=Password is required')).toBeVisible();
@@ -42,18 +42,18 @@ test.describe('PR2: Authentication', () => {
     await page.fill('input[type="email"]', 'invalid-email');
     await page.fill('input[type="password"]', 'password123');
     await page.click('button[type="submit"]');
-    
+
     // Check for email validation
     await expect(page.locator('text=Please enter a valid email')).toBeVisible();
   });
 
   test('signup flow with valid inputs', async ({ page }) => {
     await page.click('text=Sign Up');
-    
+
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.fill('input[type="text"]', testUser.name);
-    
+
     // Mock successful signup
     await page.route('**/auth/v1/signup', route => {
       route.fulfill({
@@ -67,23 +67,23 @@ test.describe('PR2: Authentication', () => {
     });
 
     await page.click('button[type="submit"]');
-    
+
     // Check for success notification
     await expect(page.locator('text=Signup successful!')).toBeVisible();
-    
+
     // Should redirect to chats page
     await expect(page).toHaveURL('/chats');
   });
 
   test('signup flow with invalid inputs', async ({ page }) => {
     await page.click('text=Sign Up');
-    
+
     await page.fill('input[type="email"]', 'invalid-email');
     await page.fill('input[type="password"]', '123'); // Too short
     await page.fill('input[type="text"]', ''); // Empty name
-    
+
     await page.click('button[type="submit"]');
-    
+
     // Check for validation errors
     await expect(page.locator('text=Please enter a valid email')).toBeVisible();
     await expect(page.locator('text=Password must be at least 6 characters')).toBeVisible();
@@ -93,7 +93,7 @@ test.describe('PR2: Authentication', () => {
   test('login flow with valid credentials', async ({ page }) => {
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
-    
+
     // Mock successful login
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
@@ -107,10 +107,10 @@ test.describe('PR2: Authentication', () => {
     });
 
     await page.click('button[type="submit"]');
-    
+
     // Check for success notification
     await expect(page.locator('text=Login successful!')).toBeVisible();
-    
+
     // Should redirect to chats page
     await expect(page).toHaveURL('/chats');
   });
@@ -118,7 +118,7 @@ test.describe('PR2: Authentication', () => {
   test('login flow with invalid credentials', async ({ page }) => {
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', 'wrongpassword');
-    
+
     // Mock failed login
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
@@ -131,10 +131,10 @@ test.describe('PR2: Authentication', () => {
     });
 
     await page.click('button[type="submit"]');
-    
+
     // Check for error notification
     await expect(page.locator('text=Invalid login credentials')).toBeVisible();
-    
+
     // Should stay on login page
     await expect(page).toHaveURL('/login');
   });
@@ -143,7 +143,7 @@ test.describe('PR2: Authentication', () => {
     // First, login
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
-    
+
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
         status: 200,
@@ -157,10 +157,10 @@ test.describe('PR2: Authentication', () => {
 
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/chats');
-    
+
     // Reload the page
     await page.reload();
-    
+
     // Should still be on chats page (session persisted)
     await expect(page).toHaveURL('/chats');
   });
@@ -168,7 +168,7 @@ test.describe('PR2: Authentication', () => {
   test('auth guards redirect unauthenticated users', async ({ page }) => {
     // Try to access protected route without login
     await page.goto('/chats');
-    
+
     // Should redirect to login page
     await expect(page).toHaveURL('/login');
   });
@@ -177,7 +177,7 @@ test.describe('PR2: Authentication', () => {
     // First, login
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
-    
+
     await page.route('**/auth/v1/token?grant_type=password', route => {
       route.fulfill({
         status: 200,
@@ -191,7 +191,7 @@ test.describe('PR2: Authentication', () => {
 
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/chats');
-    
+
     // Mock logout
     await page.route('**/auth/v1/logout', route => {
       route.fulfill({
@@ -204,7 +204,7 @@ test.describe('PR2: Authentication', () => {
     // Find and click logout button (assuming it exists in the UI)
     // This would need to be implemented in the actual app
     // await page.click('text=Logout');
-    
+
     // For now, just verify the logout API would be called
     // In a real test, you'd check that the user is redirected to login
   });
@@ -213,7 +213,7 @@ test.describe('PR2: Authentication', () => {
     // Test loading state during login
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
-    
+
     // Mock slow response
     await page.route('**/auth/v1/token?grant_type=password', route => {
       setTimeout(() => {
@@ -229,21 +229,21 @@ test.describe('PR2: Authentication', () => {
     });
 
     await page.click('button[type="submit"]');
-    
+
     // Check that loading state is shown
     await expect(page.locator('button[type="submit"]:has-text("Loading")')).toBeVisible();
-    
+
     // Button should be disabled during loading
     await expect(page.locator('button[type="submit"]')).toBeDisabled();
   });
 
   test('profile creation on signup', async ({ page }) => {
     await page.click('text=Sign Up');
-    
+
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
     await page.fill('input[type="text"]', testUser.name);
-    
+
     // Mock successful signup
     await page.route('**/auth/v1/signup', route => {
       route.fulfill({
@@ -273,7 +273,7 @@ test.describe('PR2: Authentication', () => {
     });
 
     await page.click('button[type="submit"]');
-    
+
     // Should redirect to chats page
     await expect(page).toHaveURL('/chats');
   });

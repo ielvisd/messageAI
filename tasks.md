@@ -1,6 +1,21 @@
 <!-- 8dad704a-ce91-4c50-992f-a86a6fdf85d8 c5e6b82f-7449-484b-9527-c815c62df4a0 -->
 # MessageAI Feature-Based PR Task List
 
+## Testing Infrastructure (Prerequisite)
+
+### Testing Setup: feat/testing-infrastructure
+
+- [ ] Install Playwright with web + iOS simulator support
+- [ ] Install Husky for Git hooks (pre-push/pre-commit)
+- [ ] Install lint-staged for automated linting
+- [ ] Create playwright.config.ts with web and iOS configurations
+- [ ] Create tests.md tracking document for all PRs
+- [ ] Configure pre-push hook to run lint + unit + critical E2E
+- [ ] **Tests**: Verify pre-push hook blocks bad code, E2E tests run successfully
+
+**Status**: 🔄 PENDING - Testing infrastructure setup
+**Goal**: Ensure comprehensive test coverage before feature development
+
 ## Phase 1: MVP Foundation (Day 1)
 
 ### PR1: feat/project-setup ✅ COMPLETED
@@ -18,6 +33,11 @@
 **Commit**: `2c4b709` - feat: initialize Quasar v2 project with Capacitor, Supabase, and dev tools (PR1)
 **Project Location**: `/Users/elvisibarra/Documents/GauntletAI/messageAI/messageAI-Quasar/`
 **Next**: Ready for PR2: feat/auth (requires Supabase project setup)
+
+**Testing Status**:
+- [x] Unit tests: Supabase connection, build verification
+- [ ] E2E tests: App loads, routing accessible, Supabase init
+- [ ] Reference: See tests.md for detailed tracking
 
 **Setup Required for PR2**:
 1. Create Supabase project at https://supabase.com
@@ -37,6 +57,11 @@
 **Status**: ✅ COMPLETED - Full authentication system with Supabase integration
 **Commit**: `05923f4` - Merge PR2: feat/auth - Complete authentication system
 **Next**: Ready for PR3: feat/chat-list
+
+**Testing Status**:
+- [x] Unit tests: signIn, signUp, signOut, loadProfile, reactive state
+- [ ] E2E tests: Signup/login flows, session persistence, auth guards, profile creation
+- [ ] Reference: See tests.md for detailed tracking
 
 **Features Implemented**:
 - Email/password authentication with Supabase
@@ -61,6 +86,11 @@
 **Commit**: `f65ee1e` - Merge PR3: feat/chat-list - Complete chat list functionality
 **Next**: Ready for PR4: feat/messaging-core
 
+**Testing Status**:
+- [ ] Unit tests: useChatList composable, chat loading, chat creation
+- [ ] E2E tests: Chat list loading, empty state, create dialog, navigation, unread counts
+- [ ] Reference: See tests.md for detailed tracking
+
 **Features Implemented**:
 - Real-time chat list updates via Supabase subscriptions
 - Modern UI with QList/QItem and chat previews
@@ -84,6 +114,11 @@
 **Status**: ✅ COMPLETED - Full messaging functionality with real-time updates
 **Commit**: `d03598f` - Merge PR4: feat/messaging-core - Complete messaging system
 **Next**: Ready for PR5: feat/realtime-sync
+
+**Testing Status**:
+- [ ] Unit tests: useChat composable, message sending (optimistic UI), status updates
+- [ ] E2E tests: Chat view loading, message sending, status updates, sender info, navigation
+- [ ] Reference: See tests.md for detailed tracking
 
 **Features Implemented**:
 - Real-time message sending and receiving via Supabase
@@ -117,6 +152,8 @@
 - [ ] Handle message updates/inserts in real-time
 - [ ] Add subscription cleanup on unmount
 - [ ] **Tests**: Mock realtime events, verify message updates
+- [ ] **E2E Tests**: Real-time message updates, subscription cleanup, multiple user scenarios
+- [ ] **iOS Tests**: Realtime functionality on iOS simulator
 
 ### PR6: feat/offline-handling
 
@@ -126,6 +163,8 @@
 - [ ] Queue messages when offline, sync on reconnect
 - [ ] Persist messages to local Capacitor Storage
 - [ ] **Tests**: Network status changes, offline queue behavior
+- [ ] **E2E Tests**: Offline/online transitions, message queuing, sync on reconnect
+- [ ] **iOS Tests**: Capacitor Storage integration, background/foreground sync
 
 ### PR7: feat/status-indicators
 
@@ -134,6 +173,8 @@
 - [ ] Display status indicators in chat list and chat view
 - [ ] Update user presence on app lifecycle events
 - [ ] **Tests**: Presence state updates, indicator rendering
+- [ ] **E2E Tests**: Status indicator display, presence updates, multiple user scenarios
+- [ ] **iOS Tests**: App lifecycle presence updates
 
 ### PR8: feat/read-receipts
 
@@ -142,6 +183,8 @@
 - [ ] Display read status in QChatMessage (checkmarks)
 - [ ] Update receipts on message view
 - [ ] **Tests**: Receipt update logic, UI state tests
+- [ ] **E2E Tests**: Read receipt display, tracking accuracy, real-time updates
+- [ ] **iOS Tests**: Read receipt persistence across app lifecycle
 
 ### PR9: feat/basic-groups
 

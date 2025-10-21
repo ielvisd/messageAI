@@ -102,8 +102,13 @@ Notifications use Supabase (DB webhooks trigger Edge Functions) + Firebase Cloud
 - **Lodash** (debounce)
 
 ### Testing & Linting
-- **ESLint** (`quasar lint`)
+- **ESLint** (`quasar lint`) with pre-commit hooks via Husky
 - **Vitest** (unit tests for composables/globals; e.g., test optimistic send)
+- **Playwright** (E2E tests for web + iOS simulator; critical path coverage)
+- **Husky** (pre-push/pre-commit Git hooks; blocks bad code)
+- **lint-staged** (automated linting on staged files)
+- **Test Pyramid**: E2E (critical paths) > Unit (composables) > Component (future)
+- **Pre-push Workflow**: Runs lint + unit + critical E2E; blocks push on failure
 
 ### Deployment
 - **iOS primary:** `quasar build -m capacitor` → Xcode (TestFlight, APNs cert)
@@ -283,8 +288,12 @@ describe('useChat Composable', () => {
 - **Focus:** Brainlift doc, video, social
 
 ### Lint/Test Mandate
-- Run `quasar lint` pre-commit
-- Vitest coverage >80% per feature (e.g., `vitest composables/useChat`)
+- **Pre-push Hooks** (Husky): Runs lint + unit + critical E2E tests
+- **Unit Tests**: Vitest coverage >80% per feature (e.g., `vitest composables/useChat`)
+- **E2E Tests**: 100% critical path coverage via Playwright
+- **Test Tracking**: All tests tracked in `tests.md` with checkboxes
+- **iOS Testing**: iOS simulator tests for native features via Playwright webkit
+- **Pre-commit**: `quasar lint` on staged files only
 
 ---
 
