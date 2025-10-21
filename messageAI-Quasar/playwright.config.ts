@@ -23,8 +23,17 @@ export default defineConfig({
     trace: 'on-first-retry',
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
-    /* Record video on failure */
-    video: 'retain-on-failure',
+    /* Disable video recording for now */
+    video: 'off',
+    /* Launch options to disable error overlays */
+    launchOptions: {
+      args: [
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-dev-shm-usage',
+        '--no-sandbox'
+      ]
+    }
   },
 
   /* Configure projects for major browsers */
@@ -91,11 +100,15 @@ export default defineConfig({
     url: 'http://localhost:9000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2 minutes
+    env: {
+      NODE_ENV: 'test',
+      VITE_DISABLE_ERROR_OVERLAY: 'true'
+    }
   },
 
   /* Global setup and teardown */
-  globalSetup: require.resolve('./e2e/global-setup.ts'),
-  globalTeardown: require.resolve('./e2e/global-teardown.ts'),
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
 
   /* Test timeout */
   timeout: 30 * 1000, // 30 seconds

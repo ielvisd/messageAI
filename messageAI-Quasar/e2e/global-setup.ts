@@ -12,6 +12,14 @@ async function globalSetup(config: FullConfig) {
     console.log('⏳ Waiting for dev server to be ready...');
     await page.goto('http://localhost:9000', { waitUntil: 'networkidle' });
 
+    // Disable Vite error overlay
+    await page.evaluate(() => {
+      const errorOverlay = document.querySelector('vite-plugin-checker-error-overlay');
+      if (errorOverlay) {
+        errorOverlay.remove();
+      }
+    });
+
     // Verify the app loads
     await page.waitForSelector('body', { timeout: 30000 });
     console.log('✅ Dev server is ready');

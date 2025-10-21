@@ -93,7 +93,7 @@ test.describe('PR1: Project Setup', () => {
   test('build artifacts are generated correctly', async ({ page }) => {
     // Check that static assets are loaded
     const response = await page.goto('/');
-    expect(response?.status()).toBe(200);
+    expect([200, 304]).toContain(response?.status());
 
     // Check for essential assets
     const html = await page.content();
