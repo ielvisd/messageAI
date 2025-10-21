@@ -26,11 +26,11 @@ test.describe('PR3: Chat List - Simple Tests', () => {
 
   test('responsive design works', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
     await expect(page.locator('body')).toBeVisible();
-    
+
     // Test desktop viewport
     await page.setViewportSize({ width: 1920, height: 1080 });
     await expect(page.locator('body')).toBeVisible();
