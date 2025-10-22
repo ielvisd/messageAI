@@ -204,15 +204,39 @@
 - [ ] **E2E Tests**: Status indicator display, presence updates, multiple user scenarios
 - [ ] **iOS Tests**: App lifecycle presence updates
 
-### PR8: feat/read-receipts
+### PR8: feat/read-receipts ✅ COMPLETED (October 23, 2025)
 
-- [ ] Add read_at field to messages table
-- [ ] Implement read receipt tracking logic
-- [ ] Display read status in QChatMessage (checkmarks)
-- [ ] Update receipts on message view
-- [ ] **Tests**: Receipt update logic, UI state tests
-- [ ] **E2E Tests**: Read receipt display, tracking accuracy, real-time updates
+- [x] Add read_at field to messages table
+- [x] Implement read receipt tracking logic (message_read_receipts table + RPC function)
+- [x] Display read status in QChatMessage (checkmarks: single=sent, double blue=read)
+- [x] Update receipts on message view
+- [x] **Tests**: Receipt update logic, UI state tests
+- [x] **E2E Tests**: Read receipt display, tracking accuracy, real-time updates
 - [ ] **iOS Tests**: Read receipt persistence across app lifecycle
+
+**Status**: ✅ FULLY IMPLEMENTED
+**Implementation Date**: October 23, 2025
+
+**Key Features Implemented**:
+- ✅ Full-featured read receipt system with per-user tracking
+- ✅ message_read_receipts table for individual read tracking in group chats
+- ✅ RPC function `mark_messages_as_read` for atomic operations
+- ✅ Real-time read receipt updates via Supabase Realtime
+- ✅ WhatsApp-style checkmarks (single=sent, double blue=read)
+- ✅ Group chat read counts with "Read by X" tooltips showing member names
+- ✅ Helper functions: getReadCount, getReadByUsers, hasUserRead
+- ✅ E2E test coverage for various read receipt scenarios
+
+**Database Changes**:
+- New table: `message_read_receipts` with user_id, message_id, read_at
+- New RPC function: `mark_messages_as_read(chat_id, user_id)`
+- Realtime enabled for message_read_receipts table
+
+**Files Modified**:
+- `supabase/migrations/20251023000000_add_read_receipts.sql` - Database schema
+- `src/composables/useChat.ts` - Added ReadReceipt interface, helper functions, real-time subscription
+- `src/pages/ChatViewPage.vue` - UI checkmarks and read count display
+- `e2e/05-read-receipts.spec.ts` - Comprehensive E2E test coverage
 
 ### PR9: feat/basic-groups ✅ VERIFIED (October 22, 2025)
 

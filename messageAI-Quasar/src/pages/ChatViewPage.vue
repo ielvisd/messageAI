@@ -102,14 +102,43 @@
               :class="message.sent ? (message.status === 'sending' ? 'text-primary' : 'text-blue-1') : 'text-grey-6'"
             >
               {{ message.timestamp }}
-              <q-icon 
-                v-if="message.sent && message.status === 'sending'" 
-                name="schedule" 
-                size="12px" 
-                class="q-ml-xs"
-              >
-                <q-tooltip>Queued - will send when online</q-tooltip>
-              </q-icon>
+              
+              <!-- Read Receipt Icons (for sent messages) -->
+              <template v-if="message.sent">
+                <!-- Queued/sending -->
+                <q-icon 
+                  v-if="message.status === 'sending'" 
+                  name="schedule" 
+                  size="14px" 
+                  class="q-ml-xs"
+                >
+                  <q-tooltip>Queued - will send when online</q-tooltip>
+                </q-icon>
+                
+                <!-- Single checkmark: sent -->
+                <q-icon 
+                  v-else-if="message.readCount === 0"
+                  name="done" 
+                  size="14px" 
+                  class="q-ml-xs"
+                />
+                
+                <!-- Blue double checkmark: read -->
+                <q-icon 
+                  v-else
+                  name="done_all" 
+                  size="14px" 
+                  color="blue" 
+                  class="q-ml-xs"
+                >
+                  <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
+                    Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
+                  </q-tooltip>
+                  <q-tooltip v-else>
+                    Read
+                  </q-tooltip>
+                </q-icon>
+              </template>
             </div>
           </div>
         </div>
@@ -206,7 +235,9 @@ const {
   queuedCount,
   loadMessages,
   sendMessage,
-  markAsRead
+  markAsRead,
+  getReadCount,
+  getReadByUsers
 } = useChat(chatId)
 
 // Presence system
@@ -225,7 +256,9 @@ const formattedMessages = computed(() => {
     }),
     name: msg.sender_name,
     avatar: msg.sender_avatar,
-    status: msg.status
+    status: msg.status,
+    readCount: getReadCount(msg),
+    readBy: getReadByUsers(msg)
   }))
 })
 

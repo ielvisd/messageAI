@@ -5,6 +5,14 @@ import { useNetwork } from './useNetwork'
 import { Preferences } from '@capacitor/preferences'
 import { Notify } from 'quasar'
 
+export interface ReadReceipt {
+  id: string
+  message_id: string
+  user_id: string
+  read_at: string
+  reader_name?: string
+}
+
 export interface Message {
   id: string
   chat_id: string
@@ -18,6 +26,7 @@ export interface Message {
   updated_at: string
   sender_name?: string | undefined
   sender_avatar?: string | undefined
+  read_receipts?: ReadReceipt[]
 }
 
 export interface ChatInfo {
@@ -102,7 +111,7 @@ export function useChat(chatId: string) {
         }
       }
 
-      // Load messages
+      // Load messages with read receipts
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select(`
@@ -119,6 +128,14 @@ export function useChat(chatId: string) {
           profiles!inner (
             name,
             avatar_url
+          ),
+          message_read_receipts (
+            id,
+            user_id,
+            read_at,
+            profiles!inner (
+              name
+            )
           )
         `)
         .eq('chat_id', chatId)
@@ -139,7 +156,14 @@ export function useChat(chatId: string) {
         created_at: msg.created_at,
         updated_at: msg.updated_at,
         sender_name: msg.profiles.name || undefined,
-        sender_avatar: msg.profiles.avatar_url || undefined
+        sender_avatar: msg.profiles.avatar_url || undefined,
+        read_receipts: msg.message_read_receipts?.map((receipt: any) => ({
+          id: receipt.id,
+          message_id: msg.id,
+          user_id: receipt.user_id,
+          read_at: receipt.read_at,
+          reader_name: receipt.profiles?.name || undefined
+        })) || []
       })) || []
 
     } catch (err) {
@@ -334,22 +358,29 @@ export function useChat(chatId: string) {
     if (!user.value || !chatId) return
 
     try {
-      const { error } = await supabase
+      console.log('📖 Marking messages as read in chat:', chatId)
+      
+      // Call database function to mark messages and create receipts
+      const { error: markError } = await supabase.rpc('mark_messages_as_read', {
+        p_chat_id: chatId,
+        p_user_id: user.value.id
+      })
+
+      if (markError) {
+        console.error('Failed to mark as read:', markError)
+        throw markError
+      }
+
+      // Update chat_members.last_read_at
+      const { error: memberError } = await supabase
         .from('chat_members')
         .update({ last_read_at: new Date().toISOString() })
         .eq('chat_id', chatId)
         .eq('user_id', user.value.id)
 
-      if (error) throw error
+      if (memberError) throw memberError
 
-      // Update message read status
-      messages.value.forEach(msg => {
-        if (msg.sender_id !== user.value?.id && msg.status !== 'read') {
-          msg.status = 'read'
-          msg.read_at = new Date().toISOString()
-        }
-      })
-
+      console.log('✅ Messages marked as read')
     } catch (err) {
       console.error('Error marking messages as read:', err)
     }
@@ -363,6 +394,19 @@ export function useChat(chatId: string) {
         message.read_at = new Date().toISOString()
       }
     }
+  }
+
+  // Read receipt helper functions
+  const getReadCount = (message: Message): number => {
+    return message.read_receipts?.length || 0
+  }
+
+  const getReadByUsers = (message: Message): string[] => {
+    return message.read_receipts?.map(r => r.reader_name || 'Unknown').filter(Boolean) || []
+  }
+
+  const hasUserRead = (message: Message, userId: string): boolean => {
+    return message.read_receipts?.some(r => r.user_id === userId) || false
   }
 
   // Watch for online status changes
@@ -407,7 +451,8 @@ export function useChat(chatId: string) {
                 created_at: newMessage.created_at,
                 updated_at: newMessage.updated_at,
                 sender_name: 'Unknown', // Will be updated when we load the full message
-                sender_avatar: undefined
+                sender_avatar: undefined,
+                read_receipts: []
               }
 
               // Only add if not already present (avoid duplicates)
@@ -422,6 +467,45 @@ export function useChat(chatId: string) {
                 messages.value[messageIndex].status = updatedMessage.status as 'sending' | 'sent' | 'delivered' | 'read'
                 messages.value[messageIndex].read_at = updatedMessage.read_at
                 messages.value[messageIndex].updated_at = updatedMessage.updated_at
+              }
+            }
+          }
+        )
+        .on('postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'message_read_receipts'
+          },
+          (payload) => {
+            console.log('📖 New read receipt:', payload)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const receipt = payload.new as any
+            
+            // Find the message and add the receipt
+            const message = messages.value.find(m => m.id === receipt.message_id)
+            if (message) {
+              if (!message.read_receipts) message.read_receipts = []
+              
+              // Only add if not already present
+              if (!message.read_receipts.find(r => r.user_id === receipt.user_id)) {
+                message.read_receipts.push({
+                  id: receipt.id,
+                  message_id: receipt.message_id,
+                  user_id: receipt.user_id,
+                  read_at: receipt.read_at,
+                  reader_name: undefined // Name will be fetched if needed
+                })
+                
+                // Update message status if it's our message
+                if (message.sender_id === user.value?.id) {
+                  message.status = 'read'
+                  if (!message.read_at) {
+                    message.read_at = receipt.read_at
+                  }
+                }
+                
+                console.log(`✅ Added read receipt for message ${receipt.message_id}`)
               }
             }
           }
@@ -450,6 +534,9 @@ export function useChat(chatId: string) {
     loadMessages,
     sendMessage,
     markAsRead,
-    updateMessageStatus
+    updateMessageStatus,
+    getReadCount,
+    getReadByUsers,
+    hasUserRead
   }
 }
