@@ -35,14 +35,19 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   });
 
   // Add navigation guards
-  Router.beforeEach((to, from, next) => {
-    const { requireAuth, requireGuest } = useAuthGuard()
-
-    if (to.meta.requiresAuth && !requireAuth()) {
+  Router.beforeEach(async (to, from, next) => {
+    // Wait for auth to initialize before checking authentication
+    const { waitForAuth, isAuthenticated } = await import('../state/auth')
+    await waitForAuth()
+    
+    // Check authentication requirements
+    if (to.meta.requiresAuth && !isAuthenticated.value) {
+      next('/login')
       return
     }
 
-    if (to.meta.requiresGuest && !requireGuest()) {
+    if (to.meta.requiresGuest && isAuthenticated.value) {
+      next('/chats')
       return
     }
 

@@ -4,9 +4,31 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title> Quasar App </q-toolbar-title>
+        <q-toolbar-title>MessageAI</q-toolbar-title>
 
-        <div>Quasar v{{ $q.version }}</div>
+        <!-- User Info Display -->
+        <div v-if="profile" class="row items-center q-gutter-sm">
+          <q-avatar size="32px" color="primary" text-color="white">
+            <img v-if="profile.avatar_url" :src="profile.avatar_url" />
+            <span v-else>{{ profile.name?.charAt(0)?.toUpperCase() || 'U' }}</span>
+          </q-avatar>
+          <div class="column">
+            <div class="text-caption text-white">{{ profile.name }}</div>
+            <div class="text-caption text-grey-3">{{ profile?.email || user?.email }}</div>
+          </div>
+        </div>
+
+        <q-btn 
+          v-if="isAuthenticated"
+          flat 
+          dense 
+          round 
+          icon="logout" 
+          @click="handleSignOut"
+          class="q-ml-sm"
+        >
+          <q-tooltip>Sign Out</q-tooltip>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -26,7 +48,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
+import { user, profile, isAuthenticated, signOut } from '../state/auth';
 
 const linksList: EssentialLinkProps[] = [
   {
@@ -74,8 +98,18 @@ const linksList: EssentialLinkProps[] = [
 ];
 
 const leftDrawerOpen = ref(false);
+const router = useRouter();
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
+}
+
+async function handleSignOut() {
+  try {
+    await signOut();
+    await router.push('/login');
+  } catch (error) {
+    console.error('Sign out error:', error);
+  }
 }
 </script>

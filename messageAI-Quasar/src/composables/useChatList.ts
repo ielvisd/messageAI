@@ -186,7 +186,23 @@ export function useChatList() {
         throw chatError
       }
 
-      // Add members to chat
+      console.log('Chat created successfully:', chat.id)
+
+      // Explicitly add creator as member (don't rely only on trigger)
+      // This ensures the creator can always see their own chat
+      const { error: creatorMemberError } = await supabase
+        .from('chat_members')
+        .insert({
+          chat_id: chat.id,
+          user_id: user.value.id
+        })
+
+      if (creatorMemberError) {
+        // Log but don't fail - the trigger might have already added the creator
+        console.warn('Could not add creator as member (trigger may have handled it):', creatorMemberError)
+      }
+
+      // Add other members to chat
       if (memberIds.length > 0) {
         const memberInserts = memberIds.map(memberId => ({
           chat_id: chat.id,
@@ -197,11 +213,17 @@ export function useChatList() {
           .from('chat_members')
           .insert(memberInserts)
 
-        if (membersError) throw membersError
+        if (membersError) {
+          console.error('Failed to add members:', membersError)
+          throw new Error('Failed to add members to chat')
+        }
+
+        console.log(`Successfully added ${memberIds.length} members to chat`)
       }
 
       // Reload chats to include the new one
-      void loadChats()
+      console.log('Reloading chats...')
+      await loadChats()
 
       return chat as Chat
     } catch (err) {

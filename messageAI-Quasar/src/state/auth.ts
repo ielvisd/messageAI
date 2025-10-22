@@ -1,11 +1,12 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { supabase } from '../boot/supabase'
 import type { User } from '@supabase/supabase-js'
 
 // Reactive global state
 export const user = ref<User | null>(null)
-export const profile = ref<{ id: string; name: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } | null>(null)
+export const profile = ref<{ id: string; name: string; email?: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } | null>(null)
 export const isAuthenticated = computed(() => !!user.value)
+export const authInitialized = ref(false)
 
 // Auth functions
 export async function signIn(email: string, password: string) {
@@ -109,10 +110,11 @@ export async function updateProfile(updates: { name?: string; avatar_url?: strin
 export async function initAuth() {
   try {
     // Check for test auth state first (for E2E tests)
-    if (typeof window !== 'undefined' && (window as unknown as { testAuthState?: { user: User; profile: { id: string; name: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState) {
-      const testAuth = (window as unknown as { testAuthState: { user: User; profile: { id: string; name: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState
+    if (typeof window !== 'undefined' && (window as unknown as { testAuthState?: { user: User; profile: { id: string; name: string; email?: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState) {
+      const testAuth = (window as unknown as { testAuthState: { user: User; profile: { id: string; name: string; email?: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState
       user.value = testAuth.user
       profile.value = testAuth.profile
+      authInitialized.value = true
       return
     }
 
@@ -133,7 +135,26 @@ export async function initAuth() {
         profile.value = null
       }
     })
+
+    authInitialized.value = true
   } catch (error) {
     console.error('Init auth error:', error)
+    authInitialized.value = true // Still mark as initialized even on error
   }
+}
+
+// Helper function to wait for auth initialization
+export function waitForAuth(): Promise<void> {
+  return new Promise((resolve) => {
+    if (authInitialized.value) {
+      resolve()
+    } else {
+      const unwatch = watch(authInitialized, (initialized) => {
+        if (initialized) {
+          unwatch()
+          resolve()
+        }
+      })
+    }
+  })
 }

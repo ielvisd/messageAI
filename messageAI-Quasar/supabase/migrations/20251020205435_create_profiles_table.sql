@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     name TEXT NOT NULL,
+    email TEXT,
     avatar_url TEXT,
     online_status BOOLEAN DEFAULT false,
     last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -27,8 +28,8 @@ CREATE POLICY "Users can insert own profile" ON public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, name, avatar_url)
-    VALUES (NEW.id, NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'avatar_url');
+    INSERT INTO public.profiles (id, name, email, avatar_url)
+    VALUES (NEW.id, NEW.raw_user_meta_data->>'name', NEW.email, NEW.raw_user_meta_data->>'avatar_url');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
