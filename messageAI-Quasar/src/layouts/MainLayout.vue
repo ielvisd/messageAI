@@ -10,6 +10,18 @@
 
         <q-space />
 
+        <!-- Triage Dashboard Button -->
+        <q-btn 
+          v-if="isAuthenticated"
+          flat 
+          round
+          dense
+          icon="dashboard" 
+          @click="showTriage = true"
+        >
+          <q-tooltip>Owner Triage Dashboard</q-tooltip>
+        </q-btn>
+
         <!-- User Menu (Mobile Friendly) -->
         <q-btn v-if="isAuthenticated && profile" flat dense round>
           <q-avatar size="32px" color="primary" text-color="white">
@@ -59,6 +71,11 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Triage Dashboard Dialog -->
+    <q-dialog v-model="showTriage" full-width full-height>
+      <MessageTriageView />
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -66,6 +83,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
+import MessageTriageView from '../components/MessageTriageView.vue';
 import { user, profile, isAuthenticated, signOut } from '../state/auth';
 import { usePresence } from '../composables/usePresence';
 import { usePushNotifications } from '../composables/usePushNotifications';
@@ -123,6 +141,7 @@ const linksList: EssentialLinkProps[] = [
 ];
 
 const leftDrawerOpen = ref(false);
+const showTriage = ref(false);
 const router = useRouter();
 
 function toggleLeftDrawer() {

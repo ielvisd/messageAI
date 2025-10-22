@@ -23,6 +23,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.53",
+    "@ai-sdk/vue": "^2.0.76",
     "@capacitor/app": "^7.1.0",
     "@capacitor/camera": "^7.0.2",
     "@capacitor/cli": "^7.4.3",
@@ -33,7 +35,9 @@
     "@capacitor/push-notifications": "^7.0.3",
     "@quasar/extras": "^1.16.4",
     "@supabase/supabase-js": "^2.76.0",
+    "ai": "^5.0.76",
     "axios": "^1.2.1",
+    "openai": "^6.6.0",
     "quasar": "^2.16.0",
     "vue": "^3.5.22",
     "vue-i18n": "^11.0.0",

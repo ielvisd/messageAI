@@ -41,6 +41,14 @@
       <q-btn
         flat
         round
+        icon="smart_toy"
+        @click="showScheduleQuery = true"
+      >
+        <q-tooltip>Ask AI about schedules</q-tooltip>
+      </q-btn>
+      <q-btn
+        flat
+        round
         icon="more_vert"
         @click="showChatMenu = true"
       />
@@ -153,25 +161,33 @@
     </div>
 
     <!-- Message Input -->
-    <div class="q-pa-md bg-white shadow-1">
-      <div class="row items-end q-gutter-sm">
-        <q-input
-          v-model="newMessage"
-          placeholder="Type a message..."
-          outlined
-          dense
-          class="col"
-          @keyup.enter="handleSendMessage"
-          :disable="sending"
-        />
-        <q-btn
-          round
-          color="primary"
-          icon="send"
-          @click="handleSendMessage"
-          :loading="sending"
-          :disable="!newMessage.trim()"
-        />
+    <div class="bg-white shadow-1">
+      <!-- Smart Reply Chips -->
+      <SmartReplyChips 
+        :last-message="lastMessage" 
+        @reply-selected="handleSmartReply"
+      />
+      
+      <div class="q-pa-md">
+        <div class="row items-end q-gutter-sm">
+          <q-input
+            v-model="newMessage"
+            placeholder="Type a message..."
+            outlined
+            dense
+            class="col"
+            @keyup.enter="handleSendMessage"
+            :disable="sending"
+          />
+          <q-btn
+            round
+            color="primary"
+            icon="send"
+            @click="handleSendMessage"
+            :loading="sending"
+            :disable="!newMessage.trim()"
+          />
+        </div>
       </div>
     </div>
 
@@ -211,6 +227,9 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Schedule Query Dialog -->
+    <ScheduleQueryDialog v-model="showScheduleQuery" />
   </q-page>
 </template>
 
@@ -221,6 +240,8 @@ import { useChat, type Message } from '../composables/useChat'
 import { usePresence } from '../composables/usePresence'
 import { user } from '../state/auth'
 import { Notify } from 'quasar'
+import ScheduleQueryDialog from '../components/ScheduleQueryDialog.vue'
+import SmartReplyChips from '../components/SmartReplyChips.vue'
 
 const route = useRoute()
 const chatId = route.params.id as string
@@ -245,6 +266,10 @@ const { isUserOnline } = usePresence()
 
 const newMessage = ref('')
 const showChatMenu = ref(false)
+const showScheduleQuery = ref(false)
+
+// Get last message for smart replies
+const lastMessage = computed(() => messages.value[messages.value.length - 1])
 
 const formattedMessages = computed(() => {
   return messages.value.map((msg: Message) => ({
@@ -279,6 +304,11 @@ const handleSendMessage = async () => {
     // Restore message on error
     newMessage.value = messageText
   }
+}
+
+const handleSmartReply = (text: string) => {
+  newMessage.value = text
+  // User can edit before sending or just tap send
 }
 
 // Mark messages as read when component is visible
