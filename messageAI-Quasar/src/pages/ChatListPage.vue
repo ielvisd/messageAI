@@ -454,9 +454,13 @@ const handleAcceptRequest = async (requestId: string) => {
   processingRequest.value = requestId
 
   try {
+    console.log('🎬 handleAcceptRequest called for:', requestId)
     const success = await acceptChatRequest(requestId)
     
+    console.log('📊 Accept result:', success)
+    
     if (success) {
+      console.log('✅ Request accepted successfully, reloading chats...')
       Notify.create({
         type: 'positive',
         message: 'Chat request accepted! Chat created successfully.'
@@ -464,12 +468,21 @@ const handleAcceptRequest = async (requestId: string) => {
       
       // Refresh chat list and switch to chats tab
       await loadChats()
+      console.log('✅ Chats reloaded, switching to chats tab')
       activeTab.value = 'chats'
+    } else {
+      // If not successful, show the error from the composable
+      console.error('❌ Accept failed:', requestsError.value)
+      Notify.create({
+        type: 'negative',
+        message: requestsError.value || 'Failed to accept chat request'
+      })
     }
-  } catch {
+  } catch (err) {
+    console.error('❌ Exception in handleAcceptRequest:', err)
     Notify.create({
       type: 'negative',
-      message: 'Failed to accept chat request'
+      message: err instanceof Error ? err.message : 'Failed to accept chat request'
     })
   } finally {
     processingRequest.value = null

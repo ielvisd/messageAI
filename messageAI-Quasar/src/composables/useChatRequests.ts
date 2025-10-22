@@ -150,8 +150,11 @@ export function useChatRequests() {
   const acceptChatRequest = async (requestId: string): Promise<boolean> => {
     if (!user.value) return false
 
+    console.log('🔄 Starting to accept chat request:', requestId)
+
     try {
       // Update request status
+      console.log('📝 Updating request status to accepted...')
       const { error: updateError } = await supabase
         .from('chat_requests')
         .update({ 
@@ -161,14 +164,23 @@ export function useChatRequests() {
         .eq('id', requestId)
         .eq('to_user_id', user.value.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('❌ Failed to update request status:', updateError)
+        throw updateError
+      }
+      console.log('✅ Request status updated successfully')
 
       // Create the actual chat
-      const { error: createError } = await supabase.rpc('create_chat_from_request', {
+      console.log('🏗️ Creating chat from request via RPC...')
+      const { data: chatId, error: createError } = await supabase.rpc('create_chat_from_request', {
         request_id_param: requestId
       })
 
-      if (createError) throw createError
+      if (createError) {
+        console.error('❌ Failed to create chat from request:', createError)
+        throw createError
+      }
+      console.log('✅ Chat created successfully with ID:', chatId)
 
       // Update local state
       const requestIndex = receivedRequests.value.findIndex(req => req.id === requestId)
@@ -177,13 +189,11 @@ export function useChatRequests() {
         receivedRequests.value[requestIndex]!.responded_at = new Date().toISOString()
       }
 
-      // Refresh chat list (assuming useChatList is available)
-      // This will be handled by the parent component
-
+      console.log('✅ Accept request completed successfully')
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to accept chat request'
-      console.error('Error accepting chat request:', err)
+      console.error('❌ Error accepting chat request:', err)
       return false
     }
   }
