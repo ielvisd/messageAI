@@ -1,7 +1,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
-import { RealtimeChannel } from '@supabase/supabase-js'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
 
 export interface UserPresence {
   user_id: string
@@ -80,17 +81,17 @@ export function usePresence() {
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         console.log('👋 User left:', key, leftPresences)
       })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
+      .subscribe((status) => {
+        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.log('✅ Presence channel subscribed')
           
-          // Track our presence
-          const presenceTrackStatus = await presenceChannel?.track({
+          // Track our presence (fire and forget)
+          void presenceChannel?.track({
             user_id: user.value!.id,
             online_at: new Date().toISOString(),
+          }).then((presenceTrackStatus) => {
+            console.log('👤 Presence tracked:', presenceTrackStatus)
           })
-          
-          console.log('👤 Presence tracked:', presenceTrackStatus)
         }
       })
   }
