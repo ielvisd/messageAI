@@ -550,29 +550,31 @@ const {
   loadRequests,
   checkExistingChatHistory
 } = useChatRequests({
-  onRequestAccepted: async (requestId: string, isReceiver: boolean) => {
-    console.log(`🔔 Request ${requestId} was accepted! IsReceiver: ${isReceiver}`)
-    
-    // Reload chats to show the new chat
-    await loadChats()
-    
-    // Show notification and switch to chats tab
-    if (isReceiver) {
-      // We just accepted someone's request
-      console.log('✅ You accepted a chat request, new chat created')
-      activeTab.value = 'chats'
-    } else {
-      // Someone accepted our request - show celebration notification!
-      Notify.create({
-        type: 'positive',
-        message: 'Your chat request was accepted! 🎉',
-        position: 'top',
-        timeout: 3000
-      })
+  onRequestAccepted: (requestId: string, isReceiver: boolean) => {
+    void (async () => {
+      console.log(`🔔 Request ${requestId} was accepted! IsReceiver: ${isReceiver}`)
       
-      // Automatically switch to chats tab to show the new chat
-      activeTab.value = 'chats'
-    }
+      // Reload chats to show the new chat
+      await loadChats()
+    
+      // Show notification and switch to chats tab
+      if (isReceiver) {
+        // We just accepted someone's request
+        console.log('✅ You accepted a chat request, new chat created')
+        activeTab.value = 'chats'
+      } else {
+        // Someone accepted our request - show celebration notification!
+        Notify.create({
+          type: 'positive',
+          message: 'Your chat request was accepted! 🎉',
+          position: 'top',
+          timeout: 3000
+        })
+        
+        // Automatically switch to chats tab to show the new chat
+        activeTab.value = 'chats'
+      }
+    })()
   }
 })
 
@@ -907,9 +909,9 @@ const handleDeleteSelected = async () => {
 
 // Delete all chats
 const handleDeleteAll = async () => {
-  if (chats.length === 0) return
+  if (chats.value.length === 0) return
 
-  const confirmed = confirm(`⚠️ Are you sure you want to delete ALL ${chats.length} chat(s)? This cannot be undone!`)
+  const confirmed = confirm(`⚠️ Are you sure you want to delete ALL ${chats.value.length} chat(s)? This cannot be undone!`)
   if (!confirmed) return
 
   deletingChat.value = true

@@ -1,6 +1,9 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
+import { useNetwork } from './useNetwork'
+import { Preferences } from '@capacitor/preferences'
+import { Notify } from 'quasar'
 
 export interface Message {
   id: string
@@ -28,6 +31,14 @@ export interface ChatInfo {
   }>
 }
 
+interface QueuedMessage {
+  chatId: string
+  content: string
+  messageType: 'text' | 'image' | 'file'
+  mediaUrl?: string
+  timestamp: string
+}
+
 
 interface SupabaseChat {
   id: string
@@ -48,6 +59,12 @@ export function useChat(chatId: string) {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const sending = ref(false)
+  const messageQueue = ref<QueuedMessage[]>([])
+  
+  // Network status
+  const { isOnline } = useNetwork()
+  
+  const QUEUE_KEY = `message_queue_${chatId}`
 
   const loadMessages = async () => {
     if (!user.value || !chatId) return
@@ -133,8 +150,98 @@ export function useChat(chatId: string) {
     }
   }
 
+  // Queue management functions
+  const loadQueue = async () => {
+    try {
+      const { value } = await Preferences.get({ key: QUEUE_KEY })
+      if (value) {
+        messageQueue.value = JSON.parse(value) as QueuedMessage[]
+        console.log(`📦 Loaded ${messageQueue.value.length} queued messages from storage`)
+      }
+    } catch (err) {
+      console.error('Error loading message queue:', err)
+    }
+  }
+
+  const saveQueue = async () => {
+    try {
+      await Preferences.set({
+        key: QUEUE_KEY,
+        value: JSON.stringify(messageQueue.value)
+      })
+      console.log(`💾 Saved ${messageQueue.value.length} messages to queue`)
+    } catch (err) {
+      console.error('Error saving message queue:', err)
+    }
+  }
+
+  const processQueue = async () => {
+    if (!isOnline.value || messageQueue.value.length === 0) return
+    
+    const queueCount = messageQueue.value.length
+    console.log(`🔄 Processing ${queueCount} queued messages...`)
+    
+    const queue = [...messageQueue.value]
+    messageQueue.value = []
+    await saveQueue()
+    
+    for (const queuedMsg of queue) {
+      if (queuedMsg.chatId === chatId) {
+        console.log('📤 Sending queued message:', queuedMsg.content.substring(0, 50))
+        await sendMessage(queuedMsg.content, queuedMsg.messageType, queuedMsg.mediaUrl)
+      }
+    }
+    
+    // Show success notification
+    if (queueCount > 0) {
+      Notify.create({
+        type: 'positive',
+        message: `✅ ${queueCount} queued message${queueCount > 1 ? 's' : ''} sent`,
+        position: 'top',
+        timeout: 2000
+      })
+    }
+  }
+
+  const addToQueue = async (content: string, messageType: 'text' | 'image' | 'file', mediaUrl?: string) => {
+    const queuedMessage: QueuedMessage = {
+      chatId,
+      content,
+      messageType,
+      ...(mediaUrl && { mediaUrl }),
+      timestamp: new Date().toISOString()
+    }
+    
+    messageQueue.value.push(queuedMessage)
+    await saveQueue()
+    console.log('📥 Message added to offline queue')
+  }
+
   const sendMessage = async (content: string, messageType: 'text' | 'image' | 'file' = 'text', mediaUrl?: string) => {
     if (!user.value || !chatId || !content.trim()) return
+
+    // If offline, queue the message
+    if (!isOnline.value) {
+      console.log('📵 Offline: Adding message to queue')
+      await addToQueue(content.trim(), messageType, mediaUrl)
+      
+      // Add optimistic message with 'sending' status (will show as queued)
+      const queuedMessage: Message = {
+        id: `queued_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        chat_id: chatId,
+        sender_id: user.value.id,
+        content: content.trim(),
+        message_type: messageType,
+        media_url: mediaUrl,
+        status: 'sending', // Shows as queued/pending
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        sender_name: user.value.user_metadata?.name || 'You',
+        sender_avatar: user.value.user_metadata?.avatar_url
+      }
+      messages.value.push(queuedMessage)
+      return
+    }
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const tempMessage: Message = {
@@ -258,11 +365,20 @@ export function useChat(chatId: string) {
     }
   }
 
+  // Watch for online status changes
+  watch(isOnline, async (newStatus, oldStatus) => {
+    if (newStatus && !oldStatus) {
+      console.log('🌐 Back online! Processing queued messages...')
+      await processQueue()
+    }
+  })
+
   // Set up real-time subscription
   let subscription: unknown = null
 
   onMounted(() => {
     void loadMessages()
+    void loadQueue()
 
     // Subscribe to message changes
     if (user.value && chatId) {
@@ -329,6 +445,8 @@ export function useChat(chatId: string) {
     loading: computed(() => loading.value),
     error: computed(() => error.value),
     sending: computed(() => sending.value),
+    isOnline,
+    queuedCount: computed(() => messageQueue.value.length),
     loadMessages,
     sendMessage,
     markAsRead,

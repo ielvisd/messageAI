@@ -297,8 +297,10 @@ export function useChatList() {
         )
         .subscribe((status) => {
           console.log('🔔 Chat list subscription status:', status)
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
           if (status === 'SUBSCRIBED') {
             console.log('✅ Successfully subscribed to chat updates')
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ Failed to subscribe to chat updates')
           }
