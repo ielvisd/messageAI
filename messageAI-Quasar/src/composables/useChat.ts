@@ -157,12 +157,17 @@ export function useChat(chatId: string) {
         updated_at: msg.updated_at,
         sender_name: msg.profiles.name || undefined,
         sender_avatar: msg.profiles.avatar_url || undefined,
-        read_receipts: msg.message_read_receipts?.map((receipt: any) => ({
+        read_receipts: msg.message_read_receipts?.map((receipt: { 
+          id: string; 
+          user_id: string; 
+          read_at: string; 
+          profiles?: { name?: string } 
+        }) => ({
           id: receipt.id,
           message_id: msg.id,
           user_id: receipt.user_id,
           read_at: receipt.read_at,
-          reader_name: receipt.profiles?.name || undefined
+          ...(receipt.profiles?.name && { reader_name: receipt.profiles.name })
         })) || []
       })) || []
 
@@ -479,8 +484,12 @@ export function useChat(chatId: string) {
           },
           (payload) => {
             console.log('📖 New read receipt:', payload)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const receipt = payload.new as any
+            const receipt = payload.new as {
+              id: string
+              message_id: string
+              user_id: string
+              read_at: string
+            }
             
             // Find the message and add the receipt
             const message = messages.value.find(m => m.id === receipt.message_id)
@@ -493,8 +502,7 @@ export function useChat(chatId: string) {
                   id: receipt.id,
                   message_id: receipt.message_id,
                   user_id: receipt.user_id,
-                  read_at: receipt.read_at,
-                  reader_name: undefined // Name will be fetched if needed
+                  read_at: receipt.read_at
                 })
                 
                 // Update message status if it's our message
