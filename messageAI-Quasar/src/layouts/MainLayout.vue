@@ -6,8 +6,10 @@
 
         <q-toolbar-title>MessageAI</q-toolbar-title>
 
+        <q-space />
+
         <!-- User Menu (Mobile Friendly) -->
-        <q-btn v-if="isAuthenticated && profile" flat dense round>
+        <q-btn v-if="isAuthenticated && profile" flat dense round class="q-mr-sm">
           <q-avatar size="32px" color="primary" text-color="white">
             <img v-if="profile.avatar_url" :src="profile.avatar_url" />
             <span v-else>{{ profile.name?.charAt(0)?.toUpperCase() || 'U' }}</span>
