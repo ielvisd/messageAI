@@ -460,6 +460,139 @@ test.describe('PR3: Chat List', () => {
     await expect(page.locator('text=Chat created successfully!')).toBeVisible();
   });
 
+  test('group chat with 3+ members', async ({ page }) => {
+    // This test explicitly verifies group chat functionality with 3 or more users
+    await page.click('button[aria-label="Add chat"]');
+
+    // Fill form for group chat
+    await page.fill('input[placeholder*="Chat Name"]', 'Team Group Chat');
+    await page.selectOption('select', 'group');
+
+    // Add first member
+    await page.fill('input[placeholder*="Member Email"]', 'alice@example.com');
+    await page.route('**/rest/v1/profiles*', route => {
+      const url = new URL(route.request().url());
+      const email = url.searchParams.get('email');
+      
+      if (email === 'alice@example.com') {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'alice-id',
+            name: 'Alice Johnson',
+            email: 'alice@example.com'
+          })
+        });
+      } else if (email === 'bob@example.com') {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'bob-id',
+            name: 'Bob Smith',
+            email: 'bob@example.com'
+          })
+        });
+      } else if (email === 'charlie@example.com') {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'charlie-id',
+            name: 'Charlie Brown',
+            email: 'charlie@example.com'
+          })
+        });
+      } else {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([])
+        });
+      }
+    });
+
+    await page.click('button:has-text("+")');
+    await expect(page.locator('text=Alice Johnson')).toBeVisible();
+
+    // Add second member
+    await page.fill('input[placeholder*="Member Email"]', 'bob@example.com');
+    await page.click('button:has-text("+")');
+    await expect(page.locator('text=Bob Smith')).toBeVisible();
+
+    // Add third member (this makes it 3+ users including creator)
+    await page.fill('input[placeholder*="Member Email"]', 'charlie@example.com');
+    await page.click('button:has-text("+")');
+    await expect(page.locator('text=Charlie Brown')).toBeVisible();
+
+    // Verify all three members are displayed
+    await expect(page.locator('text=Alice Johnson')).toBeVisible();
+    await expect(page.locator('text=Bob Smith')).toBeVisible();
+    await expect(page.locator('text=Charlie Brown')).toBeVisible();
+
+    // Mock chat creation with all members
+    await page.route('**/rest/v1/chats', route => {
+      if (route.request().method() === 'POST') {
+        route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'group-chat-id',
+            name: 'Team Group Chat',
+            type: 'group',
+            created_by: 'test-user-id',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        });
+      }
+    });
+
+    await page.route('**/rest/v1/chat_members', route => {
+      if (route.request().method() === 'POST') {
+        route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true })
+        });
+      }
+    });
+
+    // Create the chat
+    await page.click('text=Create');
+
+    // Verify success notification
+    await expect(page.locator('text=Chat created successfully!')).toBeVisible();
+
+    // Mock the chat list to include the new group chat with member count
+    await page.route('**/rest/v1/chat_members*', route => {
+      if (route.request().method() === 'GET') {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              chat_id: 'group-chat-id',
+              last_read_at: new Date().toISOString(),
+              chats: {
+                id: 'group-chat-id',
+                name: 'Team Group Chat',
+                type: 'group',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            }
+          ])
+        });
+      }
+    });
+
+    // Reload and verify the group chat appears in the list
+    await page.reload();
+    await expect(page.locator('text=Team Group Chat')).toBeVisible();
+  });
+
   test('member selection in create dialog', async ({ page }) => {
     await page.click('button[aria-label="Add chat"]');
 

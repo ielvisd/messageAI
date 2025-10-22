@@ -1,5 +1,8 @@
 {
   "mcpServers": {
+    "quasar Docs": {
+      "url": "https://gitmcp.io/quasarframework/quasar"
+    },
     "GitMCP Quasar": {
       "command": "npx",
       "args": [
@@ -10,7 +13,7 @@
       "env": {}
     },
     "vue-mcp": {
-      "url": "http://localhost:9002/__mcp/sse"
+      "url": "http://localhost:9000/__mcp/sse"
     }
   }
 }
