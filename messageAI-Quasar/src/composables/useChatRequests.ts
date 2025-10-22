@@ -376,9 +376,9 @@ export function useChatRequests(callbacks?: {
       )
       .subscribe((status) => {
         console.log('🔔 Real-time subscription status:', status)
-        if (status === 'SUBSCRIBED') {
+        if (status === 'SUBSCRIBED' as const) {
           console.log('✅ Successfully subscribed to chat request updates')
-        } else if (status === 'CHANNEL_ERROR') {
+        } else if (status === 'CHANNEL_ERROR' as const) {
           console.error('❌ Failed to subscribe to chat request updates')
         }
       })

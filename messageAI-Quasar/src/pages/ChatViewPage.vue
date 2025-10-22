@@ -80,7 +80,8 @@
           <div
             class="message-bubble"
             :class="{
-              'bg-primary text-white': message.sent,
+              'bg-primary text-white': message.sent && message.status === 'sent',
+              'bg-blue-2 text-primary': message.sent && message.status === 'sending',
               'bg-grey-3 text-black': !message.sent
             }"
             style="max-width: 70%; border-radius: 18px; padding: 12px 16px;"
@@ -88,9 +89,17 @@
             <div class="text-body2">{{ message.text }}</div>
             <div
               class="text-caption q-mt-xs"
-              :class="message.sent ? 'text-blue-1' : 'text-grey-6'"
+              :class="message.sent ? (message.status === 'sending' ? 'text-primary' : 'text-blue-1') : 'text-grey-6'"
             >
               {{ message.timestamp }}
+              <q-icon 
+                v-if="message.sent && message.status === 'sending'" 
+                name="schedule" 
+                size="12px" 
+                class="q-ml-xs"
+              >
+                <q-tooltip>Queued - will send when online</q-tooltip>
+              </q-icon>
             </div>
           </div>
         </div>

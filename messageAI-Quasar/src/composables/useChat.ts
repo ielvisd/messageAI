@@ -3,6 +3,7 @@ import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
 import { useNetwork } from './useNetwork'
 import { Preferences } from '@capacitor/preferences'
+import { Notify } from 'quasar'
 
 export interface Message {
   id: string
@@ -177,7 +178,8 @@ export function useChat(chatId: string) {
   const processQueue = async () => {
     if (!isOnline.value || messageQueue.value.length === 0) return
     
-    console.log(`🔄 Processing ${messageQueue.value.length} queued messages...`)
+    const queueCount = messageQueue.value.length
+    console.log(`🔄 Processing ${queueCount} queued messages...`)
     
     const queue = [...messageQueue.value]
     messageQueue.value = []
@@ -188,6 +190,16 @@ export function useChat(chatId: string) {
         console.log('📤 Sending queued message:', queuedMsg.content.substring(0, 50))
         await sendMessage(queuedMsg.content, queuedMsg.messageType, queuedMsg.mediaUrl)
       }
+    }
+    
+    // Show success notification
+    if (queueCount > 0) {
+      Notify.create({
+        type: 'positive',
+        message: `✅ ${queueCount} queued message${queueCount > 1 ? 's' : ''} sent`,
+        position: 'top',
+        timeout: 2000
+      })
     }
   }
 
