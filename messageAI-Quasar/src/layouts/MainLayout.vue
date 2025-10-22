@@ -51,6 +51,10 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
 import { user, profile, isAuthenticated, signOut } from '../state/auth';
+import { usePresence } from '../composables/usePresence';
+
+// Initialize presence system (runs for entire app session)
+usePresence();
 
 const linksList: EssentialLinkProps[] = [
   {

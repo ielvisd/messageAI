@@ -16,6 +16,16 @@
         class="q-mr-md"
       >
         <img v-if="chatInfo?.type === 'direct' && chatInfo.members[0]?.avatar_url" :src="chatInfo.members[0].avatar_url" />
+        <!-- Online status indicator -->
+        <q-badge 
+          v-if="chatInfo?.type === 'direct' && chatInfo.members[0]"
+          :color="isUserOnline(chatInfo.members[0].id) ? 'positive' : 'grey-5'"
+          floating
+          rounded
+          style="width: 12px; height: 12px; bottom: 2px; right: 2px;"
+        >
+          <q-tooltip>{{ isUserOnline(chatInfo.members[0].id) ? 'Online' : 'Offline' }}</q-tooltip>
+        </q-badge>
       </q-avatar>
       <div class="col">
         <div class="text-h6">{{ chatInfo?.name || 'Loading...' }}</div>
@@ -179,6 +189,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useChat, type Message } from '../composables/useChat'
+import { usePresence } from '../composables/usePresence'
 import { user } from '../state/auth'
 import { Notify } from 'quasar'
 
@@ -197,6 +208,9 @@ const {
   sendMessage,
   markAsRead
 } = useChat(chatId)
+
+// Presence system
+const { isUserOnline } = usePresence()
 
 const newMessage = ref('')
 const showChatMenu = ref(false)

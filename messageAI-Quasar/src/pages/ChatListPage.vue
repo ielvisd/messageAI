@@ -213,6 +213,16 @@
                 :icon="chat.type === 'group' ? 'group' : 'person'"
               >
                 <img v-if="chat.type === 'direct' && chat.members[0]?.avatar_url" :src="chat.members[0].avatar_url" />
+                <!-- Online status indicator for direct chats -->
+                <q-badge 
+                  v-if="chat.type === 'direct' && chat.members[0]"
+                  :color="isUserOnline(chat.members[0].id) ? 'positive' : 'grey-5'"
+                  floating
+                  rounded
+                  style="width: 12px; height: 12px; bottom: 2px; right: 2px;"
+                >
+                  <q-tooltip>{{ isUserOnline(chat.members[0].id) ? 'Online' : 'Offline' }}</q-tooltip>
+                </q-badge>
               </q-avatar>
             </q-item-section>
 
@@ -529,12 +539,16 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatList, type Chat } from '../composables/useChatList'
 import { useChatRequests } from '../composables/useChatRequests'
+import { usePresence } from '../composables/usePresence'
 import { supabase } from '../boot/supabase'
 import { Notify } from 'quasar'
 import { user, profile, authInitialized } from '../state/auth'
 
 const router = useRouter()
 const { chats, loading, error, loadChats, createChat, markAsRead, deleteChat, deleteMultipleChats, deleteAllChats } = useChatList()
+
+// Presence system
+const { isUserOnline } = usePresence()
 
 // Chat requests composable
 const {
