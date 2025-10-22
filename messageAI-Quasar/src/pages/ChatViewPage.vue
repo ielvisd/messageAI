@@ -36,6 +36,19 @@
       />
     </div>
 
+    <!-- Offline Banner -->
+    <q-banner v-if="!isOnline" class="bg-orange text-white">
+      <template #avatar>
+        <q-icon name="cloud_off" />
+      </template>
+      <span v-if="queuedCount > 0">
+        Offline - {{ queuedCount }} message{{ queuedCount > 1 ? 's' : '' }} queued
+      </span>
+      <span v-else>
+        Offline - messages will be queued
+      </span>
+    </q-banner>
+
     <!-- Loading State -->
     <div v-if="loading" class="column items-center justify-center q-py-xl">
       <q-spinner-dots size="40px" color="primary" />
@@ -169,6 +182,8 @@ const {
   loading,
   error,
   sending,
+  isOnline,
+  queuedCount,
   loadMessages,
   sendMessage,
   markAsRead
