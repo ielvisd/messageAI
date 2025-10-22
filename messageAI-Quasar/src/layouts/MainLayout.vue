@@ -6,28 +6,40 @@
 
         <q-toolbar-title>MessageAI</q-toolbar-title>
 
-        <!-- User Info Display -->
-        <div v-if="profile" class="row items-center q-gutter-sm">
+        <!-- User Menu (Mobile Friendly) -->
+        <q-btn v-if="isAuthenticated && profile" flat dense round>
           <q-avatar size="32px" color="primary" text-color="white">
             <img v-if="profile.avatar_url" :src="profile.avatar_url" />
             <span v-else>{{ profile.name?.charAt(0)?.toUpperCase() || 'U' }}</span>
           </q-avatar>
-          <div class="column">
-            <div class="text-caption text-white">{{ profile.name }}</div>
-            <div class="text-caption text-grey-3">{{ profile?.email || user?.email }}</div>
-          </div>
-        </div>
-
-        <q-btn 
-          v-if="isAuthenticated"
-          flat 
-          dense 
-          round 
-          icon="logout" 
-          @click="handleSignOut"
-          class="q-ml-sm"
-        >
-          <q-tooltip>Sign Out</q-tooltip>
+          
+          <q-menu>
+            <q-list style="min-width: 200px">
+              <q-item>
+                <q-item-section avatar>
+                  <q-avatar color="primary" text-color="white">
+                    <img v-if="profile.avatar_url" :src="profile.avatar_url" />
+                    <span v-else>{{ profile.name?.charAt(0)?.toUpperCase() || 'U' }}</span>
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ profile.name }}</q-item-label>
+                  <q-item-label caption>{{ profile?.email || user?.email }}</q-item-label>
+                </q-item-section>
+              </q-item>
+              
+              <q-separator />
+              
+              <q-item clickable v-close-popup @click="handleSignOut">
+                <q-item-section avatar>
+                  <q-icon name="logout" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Sign Out</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
         </q-btn>
       </q-toolbar>
     </q-header>
