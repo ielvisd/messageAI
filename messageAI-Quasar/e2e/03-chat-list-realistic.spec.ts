@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+// Extend Window interface for Supabase
+declare global {
+  interface Window {
+    supabase?: any;
+  }
+}
+
 test.describe('PR3: Chat List - Realistic Auth Flow', () => {
   const testUser = {
     email: 'test@example.com',
@@ -30,16 +37,16 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
       if (window.supabase) {
         // Mock successful login
         window.supabase.auth.signInWithPassword = async () => ({
-          data: { 
-            user: { 
-              id: 'test-user-id', 
+          data: {
+            user: {
+              id: 'test-user-id',
               email: 'test@example.com',
               app_metadata: {},
               user_metadata: { name: 'Test User' },
               aud: 'authenticated',
               created_at: '2023-01-01T00:00:00Z'
-            }, 
-            session: { access_token: 'test-token' } 
+            },
+            session: { access_token: 'test-token' }
           },
           error: null
         });
@@ -48,8 +55,8 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
         window.supabase.auth.getSession = async () => ({
           data: {
             session: { access_token: 'test-token' },
-            user: { 
-              id: 'test-user-id', 
+            user: {
+              id: 'test-user-id',
               email: 'test@example.com',
               app_metadata: {},
               user_metadata: { name: 'Test User' },
@@ -61,13 +68,13 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
         });
 
         // Mock auth state change
-        window.supabase.auth.onAuthStateChange = (callback) => {
+        window.supabase.auth.onAuthStateChange = (callback: any) => {
           setTimeout(() => {
             callback('SIGNED_IN', {
               data: {
                 session: { access_token: 'test-token' },
-                user: { 
-                  id: 'test-user-id', 
+                user: {
+                  id: 'test-user-id',
                   email: 'test@example.com',
                   app_metadata: {},
                   user_metadata: { name: 'Test User' },
@@ -82,7 +89,7 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
 
         // Mock profile loading
         const originalFrom = window.supabase.from;
-        window.supabase.from = (table) => {
+        window.supabase.from = (table: any) => {
           if (table === 'profiles') {
             return {
               select: () => ({
@@ -111,10 +118,10 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
     // Fill out login form realistically
     await page.fill('input[type="email"]', testUser.email);
     await page.fill('input[type="password"]', testUser.password);
-    
+
     // Click login button
     await page.click('button[type="submit"]');
-    
+
     // Wait for navigation to chats page
     await page.waitForURL(/.*\/chats.*/, { timeout: 10000 });
     await page.waitForTimeout(1000);
@@ -123,7 +130,7 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
   test('chat list page loads after login', async ({ page }) => {
     // Check that we're on the chats page
     await expect(page).toHaveURL(/.*\/chats.*/);
-    
+
     // Check for basic page elements
     await expect(page.locator('body')).toBeVisible();
   });
@@ -132,7 +139,7 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
     // Check for basic HTML structure
     await expect(page.locator('html')).toBeVisible();
     await expect(page.locator('body')).toBeVisible();
-    
+
     // Check for any content
     const bodyText = await page.locator('body').textContent();
     expect(bodyText).toBeTruthy();
@@ -151,7 +158,7 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
   test('page loads without errors', async ({ page }) => {
     // Check that page loads successfully
     await expect(page.locator('body')).toBeVisible();
-    
+
     // Check for any error messages
     const errorElements = page.locator('[class*="error"], [class*="Error"]');
     const errorCount = await errorElements.count();
@@ -162,7 +169,7 @@ test.describe('PR3: Chat List - Realistic Auth Flow', () => {
     // Try to navigate to different routes
     await page.goto('/login#/chats');
     await page.waitForTimeout(500);
-    
+
     // Check that page is still functional
     await expect(page.locator('body')).toBeVisible();
   });

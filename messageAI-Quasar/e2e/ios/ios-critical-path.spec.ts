@@ -139,16 +139,16 @@ test.describe('iOS Simulator - Critical Path', () => {
     const emailInput = page.locator('input[type="email"]');
     const passwordInput = page.locator('input[type="password"]');
 
-    // Test touch events
-    await emailInput.tap();
+    // Test touch events (use click instead of tap for better compatibility)
+    await emailInput.click();
     await emailInput.fill('ios@example.com');
 
-    await passwordInput.tap();
+    await passwordInput.click();
     await passwordInput.fill('password123');
 
     // Test iOS-specific navigation
     const signupLink = page.locator('text=Sign Up');
-    await signupLink.tap();
+    await signupLink.click();
     await expect(page).toHaveURL('/signup');
   });
 

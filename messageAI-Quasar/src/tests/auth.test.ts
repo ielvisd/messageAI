@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { User } from '@supabase/supabase-js'
 
 // Mock Supabase using factory function
 vi.mock('../boot/supabase', () => ({
@@ -45,7 +46,15 @@ describe('Authentication State Management', () => {
     })
 
     it('should update isAuthenticated when user changes', () => {
-      user.value = { id: 'test-id', email: 'test@example.com' } as Record<string, unknown>
+      const mockUser: User = {
+        id: 'test-id',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+      user.value = mockUser
       expect(isAuthenticated.value).toBe(true)
 
       user.value = null
@@ -55,7 +64,14 @@ describe('Authentication State Management', () => {
 
   describe('State Updates', () => {
     it('should update user state', () => {
-      const mockUser = { id: 'test-id', email: 'test@example.com' }
+      const mockUser: User = {
+        id: 'test-id',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '2023-01-01T00:00:00Z'
+      }
       user.value = mockUser
       expect(user.value).toEqual(mockUser)
     })
@@ -64,7 +80,6 @@ describe('Authentication State Management', () => {
       const mockProfile = {
         id: 'test-id',
         name: 'Test User',
-        avatar_url: null,
         online_status: true,
         last_seen: '2023-01-01T00:00:00Z',
         created_at: '2023-01-01T00:00:00Z',
@@ -79,7 +94,15 @@ describe('Authentication State Management', () => {
     it('should compute isAuthenticated correctly', () => {
       expect(isAuthenticated.value).toBe(false)
 
-      user.value = { id: 'test-id' } as Record<string, unknown>
+      const mockUser: User = {
+        id: 'test-id',
+        email: 'test@example.com',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '2023-01-01T00:00:00Z'
+      }
+      user.value = mockUser
       expect(isAuthenticated.value).toBe(true)
 
       user.value = null

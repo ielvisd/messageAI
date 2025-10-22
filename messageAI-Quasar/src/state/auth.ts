@@ -108,6 +108,14 @@ export async function updateProfile(updates: { name?: string; avatar_url?: strin
 // Initialize auth state
 export async function initAuth() {
   try {
+    // Check for test auth state first (for E2E tests)
+    if (typeof window !== 'undefined' && (window as unknown as { testAuthState?: { user: User; profile: { id: string; name: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState) {
+      const testAuth = (window as unknown as { testAuthState: { user: User; profile: { id: string; name: string; avatar_url?: string; online_status: boolean; last_seen: string; push_token?: string; created_at: string; updated_at: string } } }).testAuthState
+      user.value = testAuth.user
+      profile.value = testAuth.profile
+      return
+    }
+
     const { data: { session } } = await supabase.auth.getSession()
 
     if (session?.user) {

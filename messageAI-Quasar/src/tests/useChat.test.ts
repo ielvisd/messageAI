@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
+import type { User } from '@supabase/supabase-js'
 
 // Mock Supabase using factory function
 vi.mock('../boot/supabase', () => ({
@@ -34,13 +34,16 @@ import { user } from '../state/auth'
 
 describe('useChat composable - Simple Tests', () => {
   const mockChatId = 'test-chat-id'
-  const mockUser = {
+  const mockUser: User = {
     id: 'test-user-id',
     email: 'test@example.com',
+    app_metadata: {},
     user_metadata: {
       name: 'Test User',
       avatar_url: 'https://example.com/avatar.jpg'
-    }
+    },
+    aud: 'authenticated',
+    created_at: '2023-01-01T00:00:00Z'
   }
 
   beforeEach(() => {
@@ -51,7 +54,7 @@ describe('useChat composable - Simple Tests', () => {
   describe('initialization', () => {
     it('should initialize with correct default values', () => {
       const { messages, chatInfo, loading, error, sending } = useChat(mockChatId)
-      
+
       expect(messages.value).toEqual([])
       expect(chatInfo.value).toBeNull()
       expect(loading.value).toBe(false)
@@ -63,7 +66,7 @@ describe('useChat composable - Simple Tests', () => {
   describe('sendMessage', () => {
     it('should not send empty messages', async () => {
       const { sendMessage, messages } = useChat(mockChatId)
-      
+
       await sendMessage('')
       await sendMessage('   ')
 
@@ -74,7 +77,7 @@ describe('useChat composable - Simple Tests', () => {
   describe('updateMessageStatus', () => {
     it('should update message status', () => {
       const { updateMessageStatus, messages } = useChat(mockChatId)
-      
+
       // Add a test message
       messages.value.push({
         id: 'msg-1',
@@ -89,12 +92,12 @@ describe('useChat composable - Simple Tests', () => {
 
       updateMessageStatus('msg-1', 'delivered')
 
-      expect(messages.value[0].status).toBe('delivered')
+      expect(messages.value[0]?.status).toBe('delivered')
     })
 
     it('should set read_at when status is read', () => {
       const { updateMessageStatus, messages } = useChat(mockChatId)
-      
+
       messages.value.push({
         id: 'msg-1',
         chat_id: mockChatId,
@@ -108,8 +111,8 @@ describe('useChat composable - Simple Tests', () => {
 
       updateMessageStatus('msg-1', 'read')
 
-      expect(messages.value[0].status).toBe('read')
-      expect(messages.value[0].read_at).toBeDefined()
+      expect(messages.value[0]?.status).toBe('read')
+      expect(messages.value[0]?.read_at).toBeDefined()
     })
   })
 })

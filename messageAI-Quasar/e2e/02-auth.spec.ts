@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+// Extend Window interface for Supabase
+declare global {
+  interface Window {
+    supabase?: any;
+  }
+}
+
 test.describe('PR2: Authentication', () => {
   const testUser = {
     email: 'test@example.com',
