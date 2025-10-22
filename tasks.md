@@ -194,15 +194,39 @@
 - [ ] **E2E Tests**: Offline/online transitions, message queuing, sync on reconnect
 - [ ] **iOS Tests**: Capacitor Storage integration, background/foreground sync
 
-### PR7: feat/status-indicators
+### PR7: feat/status-indicators ✅ COMPLETED (October 22, 2025)
 
-- [ ] Add online/offline status to profiles table
-- [ ] Create presence system with Supabase Realtime presence
-- [ ] Display status indicators in chat list and chat view
-- [ ] Update user presence on app lifecycle events
+- [x] Add online/offline status to profiles table
+- [x] Create presence system with Supabase Realtime presence
+- [x] Display status indicators in chat list and chat view
+- [x] Update user presence on app lifecycle events
 - [ ] **Tests**: Presence state updates, indicator rendering
 - [ ] **E2E Tests**: Status indicator display, presence updates, multiple user scenarios
 - [ ] **iOS Tests**: App lifecycle presence updates
+
+**Status**: ✅ FULLY IMPLEMENTED
+**Implementation Date**: October 22, 2025
+
+**Key Features Implemented**:
+- ✅ Database columns: `is_online`, `status`, `last_seen_at` in profiles table
+- ✅ RPC functions: `set_user_online()`, `set_user_offline()`
+- ✅ usePresence composable for managing user presence state
+- ✅ Automatic status updates on app mount/unmount
+- ✅ Real-time presence tracking via Supabase
+- ✅ Status indicators displayed in ChatListPage and ChatViewPage
+- ✅ Integrated with MainLayout for global presence management
+
+**Database Changes**:
+- New columns: `is_online` (boolean), `status` (text), `last_seen_at` (timestamp)
+- RPC functions: `set_user_online(user_id)`, `set_user_offline(user_id)`
+- Automatic `last_seen_at` updates via trigger
+
+**Files Modified**:
+- `supabase/migrations/20251022130000_add_user_presence.sql` - Database schema
+- `src/composables/usePresence.ts` - Presence management composable
+- `src/layouts/MainLayout.vue` - Global presence initialization
+- `src/pages/ChatListPage.vue` - Display online status in chat list
+- `src/pages/ChatViewPage.vue` - Display online status in chat view
 
 ### PR8: feat/read-receipts ✅ COMPLETED (October 23, 2025)
 
@@ -265,17 +289,59 @@
 
 **Test Results**:
 - E2E test added: `e2e/03-chat-list.spec.ts` line 463 - "group chat with 3+ members"
-- Manual testing guide provided for comprehensive verification
+- Manual testing guide prov ided for comprehensive verification
 - Database schema supports unlimited members via many-to-many relationship
 
-### PR10: feat/push-notifications
+### PR10: feat/push-notifications ✅ COMPLETED (October 23, 2025)
 
-- [ ] Configure FCM in Capacitor (iOS APNs via Capacitor for reliability; PWA push as stretch goal)
-- [ ] Add push_tokens field to profiles table
-- [ ] Implement token registration with Capacitor PushNotifications
-- [ ] Create Supabase Edge Function: `/push/send` (DB webhook → FCM API)
-- [ ] Handle foreground notifications
-- [ ] **Tests**: Token storage, notification trigger (mock FCM)
+- [x] Configure FCM in Capacitor (iOS APNs via Capacitor for reliability; PWA push as stretch goal)
+- [x] Add push_tokens field to profiles table
+- [x] Implement token registration with Capacitor PushNotifications
+- [x] Create Supabase Edge Function: `/push/send` (DB webhook → FCM API)
+- [x] Handle foreground notifications
+- [x] **Tests**: Token storage, notification trigger (mock FCM)
+
+**Status**: ✅ FULLY IMPLEMENTED
+**Implementation Date**: October 23, 2025
+
+**Key Features Implemented**:
+- ✅ push_tokens JSONB column in profiles table for multi-device support
+- ✅ RPC functions: `add_push_token()`, `remove_push_token()`, `get_user_push_tokens()`
+- ✅ usePushNotifications composable for token registration and management
+- ✅ Supabase Edge Function: `send-push-notification` for FCM integration
+- ✅ Database webhook configuration for automatic notifications on new messages
+- ✅ Foreground notification handling (non-intrusive, respects real-time updates)
+- ✅ Notification tap handling to navigate to specific chats
+- ✅ Push notification logging table for debugging and monitoring
+- ✅ Integrated with MainLayout for global initialization
+- ✅ E2E test coverage for push notification flow
+
+**Database Changes**:
+- New column: `push_tokens` (JSONB array) in profiles table
+- RPC functions: `add_push_token(user_id, token, platform)`, `remove_push_token(user_id, token)`, `get_user_push_tokens(user_id)`
+- New table: `push_notification_log` for monitoring delivery
+- Webhook configuration: messages table INSERT events trigger Edge Function
+
+**Edge Function**:
+- Function: `send-push-notification` 
+- Triggered by: Database webhook on message INSERT
+- Sends to: Firebase Cloud Messaging (FCM)
+- Supports: iOS APNs, Android FCM, Web Push (configured via FCM)
+
+**Files Created/Modified**:
+- `supabase/migrations/20251023010000_add_push_tokens.sql` - Token storage schema
+- `supabase/migrations/20251023020000_add_push_notification_webhook.sql` - Webhook setup
+- `supabase/functions/send-push-notification/index.ts` - Edge Function
+- `src/composables/usePushNotifications.ts` - Push notification composable
+- `src/layouts/MainLayout.vue` - Initialize push notifications
+- `e2e/06-push-notifications.spec.ts` - E2E test coverage
+
+**Setup Instructions**:
+1. Install FCM Server Key in Supabase Dashboard (Project Settings → Edge Functions → Secrets)
+2. Configure webhook in Supabase Dashboard (Database → Webhooks)
+3. Deploy Edge Function: `supabase functions deploy send-push-notification`
+4. For iOS: Configure APNs certificates in Firebase Console
+5. For Android: Configure google-services.json in Capacitor config
 
 ## Phase 2: Core Extensions (Days 2-3)
 
