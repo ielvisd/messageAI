@@ -130,30 +130,58 @@
 - TypeScript type safety throughout
 - Fixed QPage layout error with AuthLayout
 
-### Web Test 4.5: feat/web-testing
+### Web Test 4.5: feat/web-testing ✅ COMPLETED
 
-- [ ] Test complete app flow in web browser
-- [ ] Verify login/signup functionality works
-- [ ] Test chat list loading and navigation
-- [ ] Test message sending and receiving
-- [ ] Verify real-time updates work
-- [ ] Test responsive design on different screen sizes
-- [ ] Fix any web-specific issues found
-- [ ] **Tests**: Full web app testing, cross-browser compatibility
+- [x] Test complete app flow in web browser
+- [x] Verify login/signup functionality works
+- [x] Test chat list loading and navigation
+- [x] Test message sending and receiving
+- [x] Verify real-time updates work
+- [x] Test responsive design on different screen sizes
+- [x] Fix any web-specific issues found
+- [x] **Tests**: Full web app testing, cross-browser compatibility
 
-**Status**: 🔄 IN PROGRESS - Web testing and validation
-**Branch**: `web-test-4.5`
+**Status**: ✅ COMPLETED - Web testing complete with real-time features
+**Branch**: `web-test-4.5` (merged to main)
+**Commit**: `118554d` - feat: add real-time updates, fix chat deletion, and improve request UX
 **Goal**: Ensure app works perfectly in web browser before mobile
 
-### PR5: feat/realtime-sync
+**Features Completed**:
+- Full chat request/accept workflow with real-time updates
+- "Sent" tab for tracking pending requests
+- Real-time notifications when requests are accepted
+- Automatic chat list updates on acceptance
+- Chat deletion with proper RLS policies
+- Deleted chats stay deleted (fixed persistence issue)
+- Real-time subscriptions for all chat-related tables
+- Improved UX with auto-tab switching and notifications
 
-- [ ] Configure Supabase Realtime channels in useChat
-- [ ] Subscribe to postgres_changes for messages table
-- [ ] Handle message updates/inserts in real-time
-- [ ] Add subscription cleanup on unmount
-- [ ] **Tests**: Mock realtime events, verify message updates
-- [ ] **E2E Tests**: Real-time message updates, subscription cleanup, multiple user scenarios
-- [ ] **iOS Tests**: Realtime functionality on iOS simulator
+### PR5: feat/realtime-sync ✅ COMPLETED
+
+- [x] Configure Supabase Realtime channels in useChat
+- [x] Subscribe to postgres_changes for messages table
+- [x] Handle message updates/inserts in real-time
+- [x] Add subscription cleanup on unmount
+- [x] Enable real-time replication for chat_requests, messages, chats, chat_members
+- [x] Add real-time subscriptions to useChatRequests for instant request updates
+- [x] Add real-time subscriptions to useChatList for chat list updates
+- [x] Implement callback system for cross-composable real-time events
+- [x] **Tests**: Mock realtime events, verify message updates
+- [x] **E2E Tests**: Real-time message updates, subscription cleanup, multiple user scenarios
+- [x] **iOS Tests**: Realtime functionality on iOS simulator
+
+**Status**: ✅ COMPLETED - Full real-time sync across all chat features
+**Commit**: `118554d` - feat: add real-time updates, fix chat deletion, and improve request UX
+**Next**: Ready for PR6: feat/offline-handling
+
+**Features Implemented**:
+- Real-time subscriptions for messages, chats, chat_members, and chat_requests
+- Automatic UI updates on database changes (no refresh needed)
+- Proper subscription cleanup on component unmount
+- Real-time notifications for request acceptance
+- Callback system for coordinating updates between composables
+- Enhanced logging for debugging real-time events
+- Fixed unique constraint on chat_requests to allow historical data
 
 ### PR6: feat/offline-handling
 
