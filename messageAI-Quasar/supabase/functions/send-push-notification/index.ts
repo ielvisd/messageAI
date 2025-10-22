@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const FCM_SERVER_KEY = Deno.env.get('FCM_SERVER_KEY') // Firebase Cloud Messaging server key
+const FIREBASE_SERVICE_ACCOUNT = Deno.env.get('FIREBASE_SERVICE_ACCOUNT') // Firebase service account JSON
 
 interface PushPayload {
   type: 'insert'
@@ -113,10 +113,13 @@ serve(async (req) => {
       ? message.content.substring(0, 100) + '...'
       : message.content
 
-    // Send notifications via FCM (Firebase Cloud Messaging)
-    if (FCM_SERVER_KEY) {
+    // Send notifications via Firebase Cloud Messaging (HTTP v1 API)
+    if (FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT)
+      const projectId = serviceAccount.project_id
+
       const fcmPromises = pushTokens.map((tokenData) =>
-        sendFCMNotification(tokenData.token, {
+        sendFCMNotificationV1(projectId, tokenData.token, {
           title: notificationTitle,
           body: notificationBody,
           chatId: message.chat_id,
@@ -143,10 +146,10 @@ serve(async (req) => {
         }
       )
     } else {
-      console.warn('⚠️ FCM_SERVER_KEY not configured')
+      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT not configured')
       return new Response(
         JSON.stringify({ 
-          message: 'FCM not configured', 
+          message: 'Firebase not configured', 
           would_notify: pushTokens.length 
         }),
         {
@@ -157,8 +160,9 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error processing webhook:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -167,7 +171,57 @@ serve(async (req) => {
   }
 })
 
-async function sendFCMNotification(
+// Get OAuth 2.0 access token for Firebase
+async function getAccessToken() {
+  if (!FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT not configured')
+  }
+
+  const serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT)
+  
+  // Create JWT for Google OAuth
+  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const now = Math.floor(Date.now() / 1000)
+  const payload = btoa(JSON.stringify({
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now
+  }))
+
+  // Import the private key
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    Uint8Array.from(atob(serviceAccount.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, '')), c => c.charCodeAt(0)),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+
+  // Sign the JWT
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    privateKey,
+    new TextEncoder().encode(`${header}.${payload}`)
+  )
+
+  const jwt = `${header}.${payload}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
+  })
+
+  const tokenData = await tokenResponse.json()
+  return tokenData.access_token
+}
+
+// Send notification using FCM HTTP v1 API
+async function sendFCMNotificationV1(
+  projectId: string,
   token: string,
   data: {
     title: string
@@ -176,34 +230,48 @@ async function sendFCMNotification(
     messageId: string
   }
 ) {
-  if (!FCM_SERVER_KEY) {
-    throw new Error('FCM_SERVER_KEY not configured')
-  }
+  const accessToken = await getAccessToken()
 
-  const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-    method: 'POST',
-    headers: {
-      'Authorization': `key=${FCM_SERVER_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      to: token,
-      notification: {
-        title: data.title,
-        body: data.body,
-        sound: 'default'
+  const response = await fetch(
+    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
       },
-      data: {
-        chat_id: data.chatId,
-        message_id: data.messageId
-      },
-      priority: 'high'
-    })
-  })
+      body: JSON.stringify({
+        message: {
+          token: token,
+          notification: {
+            title: data.title,
+            body: data.body
+          },
+          data: {
+            chat_id: data.chatId,
+            message_id: data.messageId
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default'
+              }
+            }
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              sound: 'default'
+            }
+          }
+        }
+      })
+    }
+  )
 
   if (!response.ok) {
     const error = await response.text()
-    console.error('FCM error:', error)
+    console.error('FCM v1 error:', error)
     throw new Error(`FCM request failed: ${error}`)
   }
 
