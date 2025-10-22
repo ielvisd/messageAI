@@ -44,7 +44,9 @@ export interface GroupRequestMember {
   }
 }
 
-export function useChatRequests() {
+export function useChatRequests(callbacks?: {
+  onRequestAccepted?: (requestId: string, isReceiver: boolean) => void
+}) {
   const sentRequests = ref<ChatRequest[]>([])
   const receivedRequests = ref<ChatRequest[]>([])
   const loading = ref(false)
@@ -55,7 +57,12 @@ export function useChatRequests() {
     receivedRequests.value.filter(req => req.status === 'pending')
   )
 
+  const pendingSentRequests = computed(() =>
+    sentRequests.value.filter(req => req.status === 'pending')
+  )
+
   const pendingRequestsCount = computed(() => pendingReceivedRequests.value.length)
+  const pendingSentCount = computed(() => pendingSentRequests.value.length)
 
   // Check if users have existing chat history
   const checkExistingChatHistory = async (userId1: string, userId2: string): Promise<boolean> => {
@@ -189,6 +196,11 @@ export function useChatRequests() {
         receivedRequests.value[requestIndex]!.responded_at = new Date().toISOString()
       }
 
+      // Notify callback that request was accepted (we are the receiver)
+      if (callbacks?.onRequestAccepted) {
+        callbacks.onRequestAccepted(requestId, true)
+      }
+
       console.log('✅ Accept request completed successfully')
       return true
     } catch (err) {
@@ -319,6 +331,8 @@ export function useChatRequests() {
   const setupRealtimeSubscription = () => {
     if (!user.value) return
 
+    console.log('🔔 Setting up real-time subscription for chat requests...')
+
     requestSubscription = supabase
       .channel('chat_requests')
       .on(
@@ -330,7 +344,7 @@ export function useChatRequests() {
           filter: `to_user_id=eq.${user.value.id}`
         },
         (payload) => {
-          console.log('Request update received:', payload)
+          console.log('📬 Received request update:', payload)
           void loadReceivedRequests()
         }
       )
@@ -343,11 +357,31 @@ export function useChatRequests() {
           filter: `from_user_id=eq.${user.value.id}`
         },
         (payload) => {
-          console.log('Sent request update received:', payload)
+          console.log('📤 Sent request update:', payload)
+          
+          // Check if a request was accepted (UPDATE event with status = 'accepted')
+          if (payload.eventType === 'UPDATE' && 
+              (payload.new as { status?: string })?.status === 'accepted') {
+            const requestId = (payload.new as { id?: string })?.id
+            console.log('🎉 Your sent request was accepted!', requestId)
+            
+            // Notify callback that request was accepted (we are the sender)
+            if (callbacks?.onRequestAccepted && requestId) {
+              callbacks.onRequestAccepted(requestId, false)
+            }
+          }
+          
           void loadSentRequests()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('🔔 Real-time subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to chat request updates')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Failed to subscribe to chat request updates')
+        }
+      })
   }
 
   const cleanup = () => {
@@ -378,7 +412,9 @@ export function useChatRequests() {
     
     // Computed
     pendingReceivedRequests,
+    pendingSentRequests,
     pendingRequestsCount,
+    pendingSentCount,
     
     // Actions
     createChatRequest,

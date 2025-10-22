@@ -261,18 +261,48 @@ export function useChatList() {
   onMounted(() => {
     void loadChats()
 
-    // Subscribe to message changes
+    // Subscribe to changes in user's chats
     if (user.value) {
+      console.log('🔔 Setting up real-time subscription for chat list...')
+      
       subscription = supabase
         .channel('chat-list-updates')
+        // Listen for new messages in any chat
         .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'messages' },
-          () => {
-            // Reload chats when messages change
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            console.log('📨 New message received:', payload)
             void loadChats()
           }
         )
-        .subscribe()
+        // Listen for chat deletions
+        .on('postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'chats' },
+          (payload) => {
+            console.log('🗑️ Chat deleted:', payload)
+            // Remove from local state immediately
+            const chatId = (payload.old as { id?: string })?.id
+            if (chatId) {
+              chats.value = chats.value.filter(c => c.id !== chatId)
+            }
+          }
+        )
+        // Listen for new chats
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chats' },
+          (payload) => {
+            console.log('➕ New chat created:', payload)
+            void loadChats()
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔔 Chat list subscription status:', status)
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to chat updates')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Failed to subscribe to chat updates')
+          }
+        })
     }
   })
 
@@ -282,12 +312,114 @@ export function useChatList() {
     }
   })
 
+  const deleteChat = async (chatId: string): Promise<boolean> => {
+    if (!user.value) return false
+
+    try {
+      console.log('🗑️ Deleting chat:', chatId)
+
+      // Delete the chat - this will cascade delete messages and members due to FK constraints
+      const { error: deleteError } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', chatId)
+
+      if (deleteError) {
+        console.error('❌ Failed to delete chat:', deleteError)
+        throw deleteError
+      }
+
+      // Remove from local state
+      chats.value = chats.value.filter(c => c.id !== chatId)
+      console.log('✅ Chat deleted successfully')
+
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete chat'
+      console.error('Error deleting chat:', err)
+      return false
+    }
+  }
+
+  const deleteMultipleChats = async (chatIds: string[]): Promise<boolean> => {
+    if (!user.value) return false
+
+    try {
+      console.log('🗑️ Deleting multiple chats:', chatIds.length)
+
+      const { error: deleteError } = await supabase
+        .from('chats')
+        .delete()
+        .in('id', chatIds)
+
+      if (deleteError) {
+        console.error('❌ Failed to delete chats:', deleteError)
+        throw deleteError
+      }
+
+      // Remove from local state
+      chats.value = chats.value.filter(c => !chatIds.includes(c.id))
+      console.log('✅ Chats deleted successfully')
+
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete chats'
+      console.error('Error deleting chats:', err)
+      return false
+    }
+  }
+
+  const deleteAllChats = async (): Promise<boolean> => {
+    if (!user.value) return false
+
+    try {
+      console.log('🗑️ Deleting all chats for user:', user.value.id)
+
+      // Get all chat IDs for the user
+      const { data: memberData } = await supabase
+        .from('chat_members')
+        .select('chat_id')
+        .eq('user_id', user.value.id)
+
+      if (!memberData || memberData.length === 0) {
+        console.log('No chats to delete')
+        return true
+      }
+
+      const chatIds = memberData.map(m => m.chat_id)
+      console.log(`Found ${chatIds.length} chats to delete`)
+
+      const { error: deleteError } = await supabase
+        .from('chats')
+        .delete()
+        .in('id', chatIds)
+
+      if (deleteError) {
+        console.error('❌ Failed to delete all chats:', deleteError)
+        throw deleteError
+      }
+
+      // Clear local state
+      chats.value = []
+      console.log('✅ All chats deleted successfully')
+
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete all chats'
+      console.error('Error deleting all chats:', err)
+      return false
+    }
+  }
+
   return {
     chats: computed(() => chats.value),
     loading: computed(() => loading.value),
     error: computed(() => error.value),
     loadChats,
     createChat,
-    markAsRead
+    markAsRead,
+    deleteChat,
+    deleteMultipleChats,
+    deleteAllChats
   }
 }

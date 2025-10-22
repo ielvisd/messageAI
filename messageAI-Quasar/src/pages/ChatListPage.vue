@@ -4,6 +4,34 @@
       <div class="row items-center q-mb-md">
         <div class="text-h5">Messages</div>
         <q-space />
+        
+        <!-- Action buttons -->
+        <q-btn
+          v-if="!selectionMode && chats.length > 0"
+          flat
+          dense
+          round
+          icon="checklist"
+          color="grey"
+          @click="toggleSelectionMode"
+          class="q-mr-sm"
+        >
+          <q-tooltip>Select Multiple</q-tooltip>
+        </q-btn>
+        
+        <q-btn
+          v-if="!selectionMode && chats.length > 0"
+          flat
+          dense
+          round
+          icon="delete_sweep"
+          color="negative"
+          @click="handleDeleteAll"
+          class="q-mr-sm"
+        >
+          <q-tooltip>Delete All Chats</q-tooltip>
+        </q-btn>
+        
         <q-btn
           flat
           dense
@@ -15,13 +43,47 @@
         >
           <q-tooltip>Toggle Debug Info</q-tooltip>
         </q-btn>
+        
         <q-btn
+          v-if="!selectionMode"
           round
           icon="add"
           color="primary"
           @click="showCreateChat = true"
           aria-label="Add chat"
         />
+      </div>
+      
+      <!-- Selection Mode Toolbar -->
+      <div v-if="selectionMode" class="q-mb-md">
+        <q-banner class="bg-blue-1">
+          <template #avatar>
+            <q-icon name="checklist" color="primary" />
+          </template>
+          <div class="row items-center">
+            <div class="col">
+              {{ selectedChats.length }} chat(s) selected
+            </div>
+            <div class="col-auto">
+              <q-btn
+                flat
+                label="Cancel"
+                color="grey"
+                @click="toggleSelectionMode"
+                class="q-mr-sm"
+              />
+              <q-btn
+                flat
+                label="Delete Selected"
+                color="negative"
+                icon="delete"
+                @click="handleDeleteSelected"
+                :disable="selectedChats.length === 0"
+                :loading="deletingChat"
+              />
+            </div>
+          </div>
+        </q-banner>
       </div>
 
       <!-- Debug Info Panel -->
@@ -72,6 +134,14 @@
             :label="pendingRequestsCount > 99 ? '99+' : pendingRequestsCount"
           />
         </q-tab>
+        <q-tab name="sent" :label="`Sent${pendingSentCount > 0 ? ` (${pendingSentCount})` : ''}`">
+          <q-badge 
+            v-if="pendingSentCount > 0" 
+            color="orange" 
+            floating 
+            :label="pendingSentCount > 99 ? '99+' : pendingSentCount"
+          />
+        </q-tab>
       </q-tabs>
 
       <q-tab-panels v-model="activeTab" animated>
@@ -112,47 +182,80 @@
 
       <!-- Chat List -->
       <q-list v-else>
-        <q-item
+        <q-slide-item
           v-for="chat in chats"
           :key="chat.id"
-          clickable
-          @click="selectChat(chat)"
-          class="q-py-md"
+          @right="handleDeleteChat(chat.id)"
+          right-color="negative"
         >
-          <q-item-section avatar>
-            <q-avatar
-              :color="chat.type === 'group' ? 'primary' : 'secondary'"
-              text-color="white"
-              :icon="chat.type === 'group' ? 'group' : 'person'"
-            >
-              <img v-if="chat.type === 'direct' && chat.members[0]?.avatar_url" :src="chat.members[0].avatar_url" />
-            </q-avatar>
-          </q-item-section>
+          <template #right>
+            <q-icon name="delete" />
+          </template>
+          
+          <q-item
+            clickable
+            @click="selectionMode ? toggleChatSelection(chat.id) : selectChat(chat)"
+            class="q-py-md"
+          >
+            <!-- Checkbox in selection mode -->
+            <q-item-section v-if="selectionMode" avatar>
+              <q-checkbox
+                :model-value="isChatSelected(chat.id)"
+                @update:model-value="toggleChatSelection(chat.id)"
+                color="primary"
+              />
+            </q-item-section>
+            
+            <q-item-section avatar>
+              <q-avatar
+                :color="chat.type === 'group' ? 'primary' : 'secondary'"
+                text-color="white"
+                :icon="chat.type === 'group' ? 'group' : 'person'"
+              >
+                <img v-if="chat.type === 'direct' && chat.members[0]?.avatar_url" :src="chat.members[0].avatar_url" />
+              </q-avatar>
+            </q-item-section>
 
-          <q-item-section>
-            <q-item-label class="text-weight-medium">
-              {{ chat.name }}
-            </q-item-label>
-            <q-item-label caption class="text-grey-6">
-              <span v-if="chat.last_message">
-                {{ chat.last_message.sender_name }}: {{ chat.last_message.content }}
-              </span>
-              <span v-else>No messages yet</span>
-            </q-item-label>
-          </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">
+                {{ chat.name }}
+              </q-item-label>
+              <q-item-label caption class="text-grey-6">
+                <span v-if="chat.last_message">
+                  {{ chat.last_message.sender_name }}: {{ chat.last_message.content }}
+                </span>
+                <span v-else>No messages yet</span>
+              </q-item-label>
+            </q-item-section>
 
-          <q-item-section side top>
-            <div class="text-caption text-grey-5">
-              {{ formatTime(chat.last_message?.created_at || chat.updated_at) }}
-            </div>
-            <q-badge
-              v-if="chat.unread_count > 0"
-              color="primary"
-              :label="chat.unread_count > 99 ? '99+' : chat.unread_count"
-              class="q-mt-xs"
-            />
-          </q-item-section>
-        </q-item>
+            <q-item-section side top>
+              <div class="text-caption text-grey-5">
+                {{ formatTime(chat.last_message?.created_at || chat.updated_at) }}
+              </div>
+              <q-badge
+                v-if="chat.unread_count > 0"
+                color="primary"
+                :label="chat.unread_count > 99 ? '99+' : chat.unread_count"
+                class="q-mt-xs"
+              />
+            </q-item-section>
+            
+            <!-- Delete button (visible when not in selection mode) -->
+            <q-item-section v-if="!selectionMode" side>
+              <q-btn
+                flat
+                dense
+                round
+                icon="delete"
+                color="negative"
+                @click.stop="handleDeleteChat(chat.id)"
+                size="sm"
+              >
+                <q-tooltip>Delete Chat</q-tooltip>
+              </q-btn>
+            </q-item-section>
+          </q-item>
+        </q-slide-item>
       </q-list>
           </div>
         </q-tab-panel>
@@ -229,6 +332,76 @@
                     :loading="processingRequest === request.id"
                   />
                 </div>
+              </q-item-section>
+
+              <q-item-section side top>
+                <div class="text-caption text-grey-5">
+                  {{ formatTime(request.created_at) }}
+                </div>
+                <q-chip
+                  size="sm"
+                  color="orange"
+                  text-color="white"
+                  label="pending"
+                  class="q-mt-xs"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-tab-panel>
+
+        <!-- Sent Requests Tab -->
+        <q-tab-panel name="sent" class="q-pa-none">
+          <!-- Sent Requests Loading State -->
+          <div v-if="requestsLoading" class="text-center q-py-lg">
+            <q-spinner-dots size="40px" color="primary" />
+            <div class="q-mt-sm">Loading sent requests...</div>
+          </div>
+
+          <!-- Sent Requests Error State -->
+          <div v-else-if="requestsError" class="text-center q-py-lg">
+            <q-icon name="error" size="40px" color="negative" />
+            <div class="q-mt-sm text-negative">{{ requestsError }}</div>
+            <q-btn
+              flat
+              color="primary"
+              label="Retry"
+              @click="loadRequests"
+              class="q-mt-sm"
+            />
+          </div>
+
+          <!-- Empty Sent Requests State -->
+          <div v-else-if="pendingSentRequests.length === 0" class="text-center q-py-lg">
+            <q-icon name="send" size="60px" color="grey-5" />
+            <div class="text-h6 q-mt-sm text-grey-6">No pending sent requests</div>
+            <div class="text-grey-6">Requests you send will appear here</div>
+          </div>
+
+          <!-- Sent Requests List -->
+          <q-list v-else>
+            <q-item
+              v-for="request in pendingSentRequests"
+              :key="request.id"
+              class="q-py-md"
+            >
+              <q-item-section avatar>
+                <q-avatar color="secondary" text-color="white">
+                  <img v-if="request.recipient?.avatar_url" :src="request.recipient.avatar_url" />
+                  <q-icon v-else name="person" />
+                </q-avatar>
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label class="text-weight-medium">
+                  {{ request.recipient?.name || request.recipient?.email }}
+                </q-item-label>
+                <q-item-label caption class="text-grey-6 q-mb-xs">
+                  {{ request.chat_type }} chat: "{{ request.chat_name }}"
+                </q-item-label>
+                <q-item-label v-if="request.message" caption class="text-grey-7">
+                  "{{ request.message }}"
+                </q-item-label>
               </q-item-section>
 
               <q-item-section side top>
@@ -361,12 +534,14 @@ import { Notify } from 'quasar'
 import { user, profile, authInitialized } from '../state/auth'
 
 const router = useRouter()
-const { chats, loading, error, loadChats, createChat, markAsRead } = useChatList()
+const { chats, loading, error, loadChats, createChat, markAsRead, deleteChat, deleteMultipleChats, deleteAllChats } = useChatList()
 
 // Chat requests composable
 const {
   pendingReceivedRequests,
+  pendingSentRequests,
   pendingRequestsCount,
+  pendingSentCount,
   loading: requestsLoading,
   error: requestsError,
   createChatRequest,
@@ -374,7 +549,32 @@ const {
   rejectChatRequest,
   loadRequests,
   checkExistingChatHistory
-} = useChatRequests()
+} = useChatRequests({
+  onRequestAccepted: async (requestId: string, isReceiver: boolean) => {
+    console.log(`🔔 Request ${requestId} was accepted! IsReceiver: ${isReceiver}`)
+    
+    // Reload chats to show the new chat
+    await loadChats()
+    
+    // Show notification and switch to chats tab
+    if (isReceiver) {
+      // We just accepted someone's request
+      console.log('✅ You accepted a chat request, new chat created')
+      activeTab.value = 'chats'
+    } else {
+      // Someone accepted our request - show celebration notification!
+      Notify.create({
+        type: 'positive',
+        message: 'Your chat request was accepted! 🎉',
+        position: 'top',
+        timeout: 3000
+      })
+      
+      // Automatically switch to chats tab to show the new chat
+      activeTab.value = 'chats'
+    }
+  }
+})
 
 // Tab state
 const activeTab = ref('chats')
@@ -382,6 +582,11 @@ const processingRequest = ref<string | null>(null)
 
 // Debug state  
 const showDebugInfo = ref(false)
+
+// Delete/selection state
+const selectionMode = ref(false)
+const selectedChats = ref<string[]>([])
+const deletingChat = ref(false)
 
 // Create chat dialog state
 const showCreateChat = ref(false)
@@ -460,16 +665,14 @@ const handleAcceptRequest = async (requestId: string) => {
     console.log('📊 Accept result:', success)
     
     if (success) {
-      console.log('✅ Request accepted successfully, reloading chats...')
+      console.log('✅ Request accepted successfully')
       Notify.create({
         type: 'positive',
         message: 'Chat request accepted! Chat created successfully.'
       })
       
-      // Refresh chat list and switch to chats tab
-      await loadChats()
-      console.log('✅ Chats reloaded, switching to chats tab')
-      activeTab.value = 'chats'
+      // Note: Chat list reload and tab switch are handled by the onRequestAccepted callback
+      // which will be triggered automatically
     } else {
       // If not successful, show the error from the composable
       console.error('❌ Accept failed:', requestsError.value)
@@ -614,6 +817,124 @@ const handleCreateChat = async () => {
     })
   } finally {
     creating.value = false
+  }
+}
+
+// Toggle selection mode
+const toggleSelectionMode = () => {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) {
+    selectedChats.value = []
+  }
+}
+
+// Toggle chat selection
+const toggleChatSelection = (chatId: string) => {
+  const index = selectedChats.value.indexOf(chatId)
+  if (index === -1) {
+    selectedChats.value.push(chatId)
+  } else {
+    selectedChats.value.splice(index, 1)
+  }
+}
+
+// Check if chat is selected
+const isChatSelected = (chatId: string) => {
+  return selectedChats.value.includes(chatId)
+}
+
+// Delete individual chat
+const handleDeleteChat = async (chatId: string) => {
+  const confirmed = confirm('Are you sure you want to delete this chat? This cannot be undone.')
+  if (!confirmed) return
+
+  deletingChat.value = true
+  try {
+    const success = await deleteChat(chatId)
+    if (success) {
+      Notify.create({
+        type: 'positive',
+        message: 'Chat deleted successfully'
+      })
+    } else {
+      Notify.create({
+        type: 'negative',
+        message: 'Failed to delete chat'
+      })
+    }
+  } catch (err) {
+    Notify.create({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to delete chat'
+    })
+  } finally {
+    deletingChat.value = false
+  }
+}
+
+// Delete selected chats
+const handleDeleteSelected = async () => {
+  if (selectedChats.value.length === 0) return
+
+  const confirmed = confirm(`Are you sure you want to delete ${selectedChats.value.length} chat(s)? This cannot be undone.`)
+  if (!confirmed) return
+
+  deletingChat.value = true
+  try {
+    const success = await deleteMultipleChats(selectedChats.value)
+    if (success) {
+      Notify.create({
+        type: 'positive',
+        message: `${selectedChats.value.length} chat(s) deleted successfully`
+      })
+      selectedChats.value = []
+      selectionMode.value = false
+    } else {
+      Notify.create({
+        type: 'negative',
+        message: 'Failed to delete chats'
+      })
+    }
+  } catch (err) {
+    Notify.create({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to delete chats'
+    })
+  } finally {
+    deletingChat.value = false
+  }
+}
+
+// Delete all chats
+const handleDeleteAll = async () => {
+  if (chats.length === 0) return
+
+  const confirmed = confirm(`⚠️ Are you sure you want to delete ALL ${chats.length} chat(s)? This cannot be undone!`)
+  if (!confirmed) return
+
+  deletingChat.value = true
+  try {
+    const success = await deleteAllChats()
+    if (success) {
+      Notify.create({
+        type: 'positive',
+        message: 'All chats deleted successfully'
+      })
+      selectedChats.value = []
+      selectionMode.value = false
+    } else {
+      Notify.create({
+        type: 'negative',
+        message: 'Failed to delete all chats'
+      })
+    }
+  } catch (err) {
+    Notify.create({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to delete all chats'
+    })
+  } finally {
+    deletingChat.value = false
   }
 }
 
