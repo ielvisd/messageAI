@@ -42,9 +42,9 @@ export function useNetwork() {
     }
   }
 
-  const cleanup = async () => {
+  const cleanup = () => {
     if (networkListener) {
-      await networkListener.remove()
+      void networkListener.remove()
       networkListener = null
     }
   }

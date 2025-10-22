@@ -196,7 +196,7 @@ export function useChat(chatId: string) {
       chatId,
       content,
       messageType,
-      mediaUrl,
+      ...(mediaUrl && { mediaUrl }),
       timestamp: new Date().toISOString()
     }
     
