@@ -127,24 +127,24 @@ export function usePushNotifications() {
     if (!Capacitor.isNativePlatform()) return
 
     // Registration success
-    PushNotifications.addListener('registration', (token: Token) => {
+    void PushNotifications.addListener('registration', (token: Token) => {
       console.log('✅ Push registration success, token:', token.value)
       void savePushToken(token.value)
     })
 
     // Registration error
-    PushNotifications.addListener('registrationError', (err) => {
+    void PushNotifications.addListener('registrationError', (err) => {
       console.error('❌ Push registration error:', err)
       error.value = 'Registration failed'
     })
 
     // Notification received while app is in foreground
-    PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+    void PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
       handleForegroundNotification(notification)
     })
 
     // Notification tapped (app in background or closed)
-    PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
+    void PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
       handleNotificationTap(action)
     })
 
