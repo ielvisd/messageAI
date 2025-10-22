@@ -498,12 +498,19 @@ export function useChat(chatId: string) {
               
               // Only add if not already present
               if (!message.read_receipts.find(r => r.user_id === receipt.user_id)) {
-                message.read_receipts.push({
+                // Look up reader name from chat members
+                const reader = chatInfo.value?.members.find(m => m.id === receipt.user_id)
+                const readerName = reader?.name
+                
+                const newReceipt: ReadReceipt = {
                   id: receipt.id,
                   message_id: receipt.message_id,
                   user_id: receipt.user_id,
-                  read_at: receipt.read_at
-                })
+                  read_at: receipt.read_at,
+                  ...(readerName && { reader_name: readerName })
+                }
+                
+                message.read_receipts.push(newReceipt)
                 
                 // Update message status if it's our message
                 if (message.sender_id === user.value?.id) {
@@ -513,7 +520,7 @@ export function useChat(chatId: string) {
                   }
                 }
                 
-                console.log(`✅ Added read receipt for message ${receipt.message_id}`)
+                console.log(`✅ Added read receipt for message ${receipt.message_id}${readerName ? ` by ${readerName}` : ''}`)
               }
             }
           }
