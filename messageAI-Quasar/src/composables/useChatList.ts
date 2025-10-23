@@ -38,6 +38,15 @@ interface ChatMemberProfile {
   }
 }
 
+interface UserChat {
+  chat_id: string
+  chat_name: string
+  chat_type: string
+  created_at: string
+  updated_at: string
+  last_read_at: string | null
+}
+
 export function useChatList() {
   const chats = ref<Chat[]>([])
   const loading = ref(false)
@@ -57,7 +66,7 @@ export function useChatList() {
       if (membersError) throw membersError
 
       // Get last messages and unread counts for each chat
-      const chatPromises = userChats?.map(async (userChat) => {
+      const chatPromises = userChats?.map(async (userChat: UserChat) => {
         const chat = {
           id: userChat.chat_id,
           name: userChat.chat_name,
