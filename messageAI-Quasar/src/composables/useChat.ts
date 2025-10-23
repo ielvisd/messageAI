@@ -84,32 +84,43 @@ export function useChat(chatId: string) {
     error.value = null
 
     try {
-      // Load chat info
+      // Load chat info - WORKAROUND: Fetch separately to avoid RLS join issues
       const { data: chat, error: chatError } = await supabase
         .from('chats')
-        .select(`
-          id,
-          name,
-          type,
-          chat_members (
-            profiles!inner (
-              id,
-              name,
-              avatar_url
-            )
-          )
-        `)
+        .select('id, name, type')
         .eq('id', chatId)
-        .single() as { data: SupabaseChat | null; error: unknown }
+        .single()
 
       if (chatError) throw new Error('Failed to load chat')
 
+      // Get chat members separately
+      const { data: memberRecords } = await supabase
+        .from('chat_members')
+        .select('user_id')
+        .eq('chat_id', chatId)
+
+      // Fetch profiles separately
+      let members: { id: string; name: string; avatar_url?: string }[] = []
+      if (memberRecords && memberRecords.length > 0) {
+        const userIds = memberRecords.map(m => m.user_id)
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url')
+          .in('id', userIds)
+        
+        members = profilesData?.map(profile => ({
+          id: profile.id as string,
+          name: profile.name as string,
+          avatar_url: profile.avatar_url as string | undefined
+        })) || []
+      }
+
       if (chat) {
         chatInfo.value = {
-          id: chat.id,
-          name: chat.name || 'Unnamed Chat',
+          id: chat.id as string,
+          name: (chat.name as string) || 'Unnamed Chat',
           type: chat.type as 'direct' | 'group',
-          members: chat.chat_members?.map((member) => member.profiles) || []
+          members
         }
       }
 

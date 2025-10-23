@@ -97,17 +97,30 @@ export function useChatList() {
           .eq('chat_id', chat.id)
           .gt('created_at', lastReadAt || '1970-01-01')
 
-        // Get chat members
-        const { data: members } = await supabase
+        // Get chat members - WORKAROUND: Fetch separately to avoid RLS join issues
+        const { data: memberRecords } = await supabase
           .from('chat_members')
-          .select(`
-            profiles!inner (
-              id,
-              name,
-              avatar_url
-            )
-          `)
-          .eq('chat_id', chat.id) as { data: ChatMemberProfile[] | null }
+          .select('user_id')
+          .eq('chat_id', chat.id)
+
+        // Fetch profiles separately
+        let members: ChatMemberProfile[] = []
+        if (memberRecords && memberRecords.length > 0) {
+          const userIds = memberRecords.map(m => m.user_id)
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, name, avatar_url')
+            .in('id', userIds)
+          
+          // Join in memory
+          members = profilesData?.map(profile => ({
+            profiles: {
+              id: profile.id,
+              name: profile.name,
+              avatar_url: profile.avatar_url
+            }
+          })) || []
+        }
 
         return {
           id: String(chat.id),
