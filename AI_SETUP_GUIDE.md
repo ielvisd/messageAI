@@ -17,9 +17,17 @@
 
 ### 1. Apply Database Migrations
 
-Go to **Supabase Dashboard → SQL Editor** and run these migrations:
+Go to **Supabase Dashboard → SQL Editor** and run these migrations **in order**:
 
-#### Migration 1: AI Foundation
+#### Migration 1: Fix Chat Members RLS (CRITICAL!)
+```sql
+-- Copy and paste the entire contents of:
+-- messageAI-Quasar/supabase/migrations/20251024020000_fix_chat_members_rls_recursion.sql
+```
+
+**⚠️ IMPORTANT**: Run this first! It fixes infinite recursion errors that prevent chat list loading.
+
+#### Migration 2: AI Foundation
 ```sql
 -- Copy and paste the entire contents of:
 -- messageAI-Quasar/supabase/migrations/20251024000000_add_ai_foundation.sql
@@ -27,7 +35,7 @@ Go to **Supabase Dashboard → SQL Editor** and run these migrations:
 
 **Note**: This enables the `pgvector` extension. If it's not available on your Supabase project tier, you may need to upgrade or use a workaround.
 
-#### Migration 2: Seed Gym Data
+#### Migration 3: Seed Gym Data
 ```sql
 -- Copy and paste the entire contents of:
 -- messageAI-Quasar/supabase/migrations/20251024010000_seed_gym_data.sql
@@ -165,6 +173,13 @@ Get your API key from: https://platform.openai.com/api-keys
 
 ## 🔍 Troubleshooting
 
+### "Infinite recursion detected in policy for relation chat_members"
+**This is the most critical error!**
+- **Cause**: RLS policies reference `chat_members` within `chat_members` policies
+- **Solution**: Apply migration `20251024020000_fix_chat_members_rls_recursion.sql` FIRST
+- **Symptoms**: Chat list won't load, 500 errors in console
+- Go to Supabase Dashboard → SQL Editor and run the fix migration
+
 ### "Function not found" error
 - Ensure Edge Function deployed: `supabase functions deploy gym-ai-assistant`
 - Check function logs: `supabase functions logs gym-ai-assistant`
@@ -182,6 +197,11 @@ Get your API key from: https://platform.openai.com/api-keys
 - Check browser console for errors
 - Ensure Edge Function returns `{ replies: [...] }` format
 - Verify message has content
+
+### Chat list loads but messages don't
+- Check RLS policies on `messages` table
+- Verify `chat_members` policies are correctly applied
+- Check browser console for specific error codes
 
 ## 📝 Files Modified
 
