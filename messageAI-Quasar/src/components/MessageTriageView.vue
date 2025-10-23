@@ -182,8 +182,8 @@ interface TriageMessage {
   sender_id: string
   sender_name: string
   content: string
-  category?: string
-  suggested_reply?: string
+  category?: string | undefined
+  suggested_reply?: string | undefined
   created_at: string
 }
 
@@ -238,15 +238,18 @@ const loadMessages = async () => {
     .limit(50)
   
   if (!error && data) {
-    allMessages.value = data.map((msg) => ({
-      id: msg.id as string,
-      chat_id: msg.chat_id as string,
-      sender_id: msg.sender_id as string,
-      sender_name: (msg.profiles as { name: string }).name,
-      content: msg.content as string,
-      category: msg.category as string | undefined,
-      created_at: msg.created_at as string
-    }))
+    allMessages.value = data.map((msg) => {
+      const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles
+      return {
+        id: msg.id as string,
+        chat_id: msg.chat_id as string,
+        sender_id: msg.sender_id as string,
+        sender_name: (profile as { name: string }).name,
+        content: msg.content as string,
+        category: msg.category as string | undefined,
+        created_at: msg.created_at as string
+      }
+    })
   }
 }
 
@@ -285,6 +288,7 @@ const quickReply = (msg: TriageMessage) => {
   void router.push(`/chat/${msg.chat_id}`)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const delegate = (_msg: TriageMessage) => {
   // Future feature: delegate to staff member
   Notify.create({
