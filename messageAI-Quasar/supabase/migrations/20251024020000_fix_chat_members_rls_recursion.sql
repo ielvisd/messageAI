@@ -1,10 +1,16 @@
 -- Fix infinite recursion in chat_members RLS policies
 -- This occurs when policies reference the same table they're protecting
 
--- Drop existing problematic policies
+-- Drop ALL existing policies on chat_members to ensure clean slate
 DROP POLICY IF EXISTS "Users can view chat members in their chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can insert chat members when creating chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can view their own chat memberships" ON public.chat_members;
+DROP POLICY IF EXISTS "Users can view chat members for their created chats" ON public.chat_members;
+DROP POLICY IF EXISTS "Users can view own membership records" ON public.chat_members;
+DROP POLICY IF EXISTS "Chat creators can add members" ON public.chat_members;
+DROP POLICY IF EXISTS "Users can add themselves to chats" ON public.chat_members;
+DROP POLICY IF EXISTS "Users can leave chats" ON public.chat_members;
+DROP POLICY IF EXISTS "Chat creators can remove members" ON public.chat_members;
 
 -- Recreate with non-recursive policies
 -- Policy 1: Users can view chat members for chats they created
