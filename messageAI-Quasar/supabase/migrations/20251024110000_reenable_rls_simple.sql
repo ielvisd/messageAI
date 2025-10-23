@@ -2,14 +2,33 @@
 -- After confirming RLS was the root cause of 500 errors
 
 -- ==============================================
--- STEP 1: Re-enable RLS
+-- STEP 1: Drop ALL existing policies (clean slate)
+-- ==============================================
+
+-- Drop all possible chat_members policies
+DROP POLICY IF EXISTS "chat_members_select_own" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_select_in_my_chats" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_select" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_view_all_in_my_chats" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_select_if_member" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_select_all" ON public.chat_members;
+DROP POLICY IF EXISTS "chat_members_view_all" ON public.chat_members;
+
+-- Drop all possible profiles policies
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_view_all" ON public.profiles;
+
+-- ==============================================
+-- STEP 2: Re-enable RLS
 -- ==============================================
 
 ALTER TABLE public.chat_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================
--- STEP 2: Create ultra-simple SELECT policies
+-- STEP 3: Create ultra-simple SELECT policies
 -- ==============================================
 
 -- Allow all authenticated users to view chat members
