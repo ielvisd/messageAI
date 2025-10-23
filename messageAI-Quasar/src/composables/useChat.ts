@@ -51,19 +51,6 @@ interface QueuedMessage {
 }
 
 
-interface SupabaseChat {
-  id: string
-  name: string
-  type: string
-  chat_members: Array<{
-    profiles: {
-      id: string
-      name: string
-      avatar_url?: string
-    }
-  }>
-}
-
 export function useChat(chatId: string) {
   const messages = ref<Message[]>([])
   const chatInfo = ref<ChatInfo | null>(null)
@@ -108,11 +95,16 @@ export function useChat(chatId: string) {
           .select('id, name, avatar_url')
           .in('id', userIds)
         
-        members = profilesData?.map(profile => ({
-          id: profile.id as string,
-          name: profile.name as string,
-          avatar_url: profile.avatar_url as string | undefined
-        })) || []
+        members = profilesData?.map(profile => {
+          const member: { id: string; name: string; avatar_url?: string } = {
+            id: profile.id as string,
+            name: profile.name as string
+          }
+          if (profile.avatar_url) {
+            member.avatar_url = profile.avatar_url as string
+          }
+          return member
+        }) || []
       }
 
       if (chat) {
