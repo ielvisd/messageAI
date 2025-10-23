@@ -2,7 +2,13 @@
 -- Without this, you can only see your own membership, not other members
 
 -- ==============================================
--- STEP 1: Create security definer function
+-- STEP 1: Drop existing policy if it exists
+-- ==============================================
+
+DROP POLICY IF EXISTS "chat_members_select_in_my_chats" ON public.chat_members;
+
+-- ==============================================
+-- STEP 2: Create security definer function
 -- ==============================================
 
 -- Function to check if user is a member of a specific chat
@@ -21,7 +27,7 @@ END;
 $$;
 
 -- ==============================================
--- STEP 2: Add policy to view all members of your chats
+-- STEP 3: Add policy to view all members of your chats
 -- ==============================================
 
 -- Policy: Users can view all members of chats they belong to
