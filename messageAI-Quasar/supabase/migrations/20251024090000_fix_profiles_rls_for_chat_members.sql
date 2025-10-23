@@ -17,6 +17,7 @@
 -- Drop any overly restrictive profile SELECT policies
 DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
 
 -- Create policy to allow all authenticated users to view basic profile info
 -- This is safe because:
