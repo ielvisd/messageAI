@@ -50,31 +50,23 @@ export function useChatList() {
     error.value = null
 
     try {
-      // Get chats where user is a member
-      const { data: chatMembers, error: membersError } = await supabase
-        .from('chat_members')
-        .select(`
-          chat_id,
-          last_read_at,
-          chats!inner (
-            id,
-            name,
-            type,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', user.value.id)
+      // Get chats where user is a member using security definer function
+      const { data: userChats, error: membersError } = await supabase
+        .rpc('get_user_chats', { p_user_id: user.value.id })
 
       if (membersError) throw membersError
 
       // Get last messages and unread counts for each chat
-      const chatPromises = chatMembers?.map(async (member) => {
-        const chat = Array.isArray(member.chats) ? member.chats[0] : member.chats
-
-        if (!chat) {
-          throw new Error('Chat not found')
+      const chatPromises = userChats?.map(async (userChat) => {
+        const chat = {
+          id: userChat.chat_id,
+          name: userChat.chat_name,
+          type: userChat.chat_type as 'direct' | 'group',
+          created_at: userChat.created_at,
+          updated_at: userChat.updated_at
         }
+        
+        const lastReadAt = userChat.last_read_at
 
         // Get last message
         const { data: lastMessage } = await supabase
@@ -94,7 +86,7 @@ export function useChatList() {
           .from('messages')
           .select('*', { count: 'exact', head: true })
           .eq('chat_id', chat.id)
-          .gt('created_at', member.last_read_at || '1970-01-01')
+          .gt('created_at', lastReadAt || '1970-01-01')
 
         // Get chat members
         const { data: members } = await supabase
