@@ -238,14 +238,14 @@ const loadMessages = async () => {
     .limit(50)
   
   if (!error && data) {
-    allMessages.value = data.map((msg: any) => ({
-      id: msg.id,
-      chat_id: msg.chat_id,
-      sender_id: msg.sender_id,
-      sender_name: msg.profiles.name,
-      content: msg.content,
-      category: msg.category,
-      created_at: msg.created_at
+    allMessages.value = data.map((msg) => ({
+      id: msg.id as string,
+      chat_id: msg.chat_id as string,
+      sender_id: msg.sender_id as string,
+      sender_name: (msg.profiles as { name: string }).name,
+      content: msg.content as string,
+      category: msg.category as string | undefined,
+      created_at: msg.created_at as string
     }))
   }
 }
@@ -285,7 +285,7 @@ const quickReply = (msg: TriageMessage) => {
   void router.push(`/chat/${msg.chat_id}`)
 }
 
-const delegate = (msg: TriageMessage) => {
+const delegate = (_msg: TriageMessage) => {
   // Future feature: delegate to staff member
   Notify.create({
     type: 'info',

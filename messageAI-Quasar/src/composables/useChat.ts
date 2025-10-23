@@ -27,6 +27,8 @@ export interface Message {
   sender_name?: string | undefined
   sender_avatar?: string | undefined
   read_receipts?: ReadReceipt[]
+  category?: string | undefined
+  ai_processed?: boolean | undefined
 }
 
 export interface ChatInfo {

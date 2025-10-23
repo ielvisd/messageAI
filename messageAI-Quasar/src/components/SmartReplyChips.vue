@@ -23,7 +23,7 @@ import { user } from '../state/auth'
 import type { Message } from '../composables/useChat'
 
 const props = defineProps<{
-  lastMessage?: Message
+  lastMessage?: Message | undefined
 }>()
 
 const emit = defineEmits<{
