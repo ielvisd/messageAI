@@ -5,7 +5,7 @@
 -- STEP 1: Drop ALL existing RLS policies on both tables
 -- ==============================================
 
--- Drop chat_members policies
+-- Drop chat_members policies (all possible variations)
 DROP POLICY IF EXISTS "Users can view chat members in their chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can insert chat members when creating chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can view their own chat memberships" ON public.chat_members;
@@ -15,8 +15,14 @@ DROP POLICY IF EXISTS "Chat creators can add members" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can add themselves to chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Users can leave chats" ON public.chat_members;
 DROP POLICY IF EXISTS "Chat creators can remove members" ON public.chat_members;
+DROP POLICY IF EXISTS "View own memberships" ON public.chat_members;
+DROP POLICY IF EXISTS "Creators view all members" ON public.chat_members;
+DROP POLICY IF EXISTS "Creators add members" ON public.chat_members;
+DROP POLICY IF EXISTS "Users add themselves" ON public.chat_members;
+DROP POLICY IF EXISTS "Users leave chats" ON public.chat_members;
+DROP POLICY IF EXISTS "Creators remove members" ON public.chat_members;
 
--- Drop chats policies
+-- Drop chats policies (all possible variations)
 DROP POLICY IF EXISTS "Users can view their chats" ON public.chats;
 DROP POLICY IF EXISTS "Users can create chats" ON public.chats;
 DROP POLICY IF EXISTS "Users can view chats they are members of" ON public.chats;
@@ -24,6 +30,10 @@ DROP POLICY IF EXISTS "Chat creators can view their chats" ON public.chats;
 DROP POLICY IF EXISTS "Users can insert chats" ON public.chats;
 DROP POLICY IF EXISTS "Chat creators can update their chats" ON public.chats;
 DROP POLICY IF EXISTS "Chat creators can delete their chats" ON public.chats;
+DROP POLICY IF EXISTS "View accessible chats" ON public.chats;
+DROP POLICY IF EXISTS "Chat creators can view" ON public.chats;
+DROP POLICY IF EXISTS "Chat creators can update" ON public.chats;
+DROP POLICY IF EXISTS "Chat creators can delete" ON public.chats;
 
 -- ==============================================
 -- STEP 2: Create security definer functions (bypasses RLS)
