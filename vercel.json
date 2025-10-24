@@ -1,15 +1,5 @@
 {
   "version": 2,
-  "name": "messageai",
-  "builds": [
-    {
-      "src": "messageAI-Quasar/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "messageAI-Quasar/dist/pwa"
-      }
-    }
-  ],
   "buildCommand": "cd messageAI-Quasar && npm install && npx quasar build -m pwa",
   "outputDirectory": "messageAI-Quasar/dist/pwa",
   "routes": [
@@ -24,9 +14,6 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_VERSION": "20"
-  }
+  ]
 }
 
