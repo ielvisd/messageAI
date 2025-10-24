@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "name": "messageai",
+  "builds": [
+    {
+      "src": "messageAI-Quasar/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "messageAI-Quasar/dist/pwa"
+      }
+    }
+  ],
+  "buildCommand": "cd messageAI-Quasar && npm install && npx quasar build -m pwa",
+  "outputDirectory": "messageAI-Quasar/dist/pwa",
+  "routes": [
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|webmanifest))",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      },
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "NODE_VERSION": "20"
+  }
+}
+
