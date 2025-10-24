@@ -3,11 +3,11 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: () => {
-      // This will be handled by router guard
-      // Default to login, guard will redirect based on auth state
-      return '/login'
-    }
+    component: () => import('layouts/LandingLayout.vue'),
+    meta: { requiresGuest: true },
+    children: [
+      { path: '', component: () => import('pages/LandingPage.vue') }
+    ]
   },
   {
     path: '/login',
@@ -111,6 +111,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
     children: [{ path: '', component: () => import('pages/SchedulePage.vue') }],
+  },
+
+  // Student Dashboard
+  {
+    path: '/student/dashboard',
+    component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('pages/StudentDashboardPage.vue') }],
+  },
+
+  // Check-In (Scanner)
+  {
+    path: '/check-in',
+    component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('components/CheckInScanner.vue') }],
+  },
+
+  // Check-In via QR Token (direct link)
+  {
+    path: '/check-in/:token',
+    component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('components/CheckInScanner.vue') }],
   },
 
   // Always leave this as last one,

@@ -50,19 +50,19 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       owned_gym_ids: (profile.value as any)?.owned_gym_ids
     })
     
-    // Handle root path based on auth status
-    if (to.path === '/' || to.path === '/login') {
+    // Handle login path - redirect authenticated users to appropriate dashboard
+    if (to.path === '/login') {
       if (isAuthenticated.value) {
         const role = (profile.value as any)?.role
         const gymId = (profile.value as any)?.gym_id
         const ownedGymIds = (profile.value as any)?.owned_gym_ids || []
-        
+
         console.log('✅ User is authenticated, checking role/gym...', {
           gymId,
           role,
           ownedGymIds
         })
-        
+
         // If no gym_id, no role, and no owned gyms, redirect to gym setup
         // BUT: If user has 'owner' role, let them through (they may need to select a gym)
         if (!gymId && !role && ownedGymIds.length === 0) {
@@ -70,7 +70,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
           next('/setup/gym')
           return
         }
-        
+
         // Special case: If owner role but no gymId, they might have owned_gym_ids
         // The dashboard will handle gym selection
         if (role === 'owner' && !gymId && ownedGymIds.length > 0) {
@@ -78,7 +78,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
           next('/dashboard')
           return
         }
-        
+
         // Redirect based on role
         console.log('➡️ Has role/gym, redirecting to dashboard')
         switch (role) {

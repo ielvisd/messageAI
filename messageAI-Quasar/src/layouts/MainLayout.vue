@@ -109,6 +109,15 @@
           </q-item-section>
         </q-item>
 
+        <q-item v-if="userRole === 'student'" clickable @click="navigate('/student/dashboard')">
+          <q-item-section avatar>
+            <q-icon name="analytics" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>My Dashboard</q-item-label>
+          </q-item-section>
+        </q-item>
+
         <q-separator class="q-my-md" />
 
         <q-item clickable @click="navigate('/chats')">
