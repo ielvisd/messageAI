@@ -1,17 +1,5 @@
 {
   "mcpServers": {
-    "quasar Docs": {
-      "url": "https://gitmcp.io/quasarframework/quasar"
-    },
-    "GitMCP Quasar": {
-      "command": "npx",
-      "args": [
-        "@modelcontextprotocol/server-git",
-        "--repository",
-        "https://github.com/quasarframework/quasar.git"
-      ],
-      "env": {}
-    },
     "vue-mcp": {
       "url": "http://localhost:9000/__mcp/sse"
     }

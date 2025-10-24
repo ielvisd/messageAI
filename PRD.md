@@ -1,5 +1,5 @@
 # Product Requirements Document (PRD)
-## MessageAI - AI-Powered Cross-Platform Messaging App for Remote Teams
+## Ossome - AI-Powered Team Communication for Jiu-Jitsu Gyms
 
 ---
 
@@ -7,7 +7,7 @@
 
 ### Project Summary
 
-MessageAI is a WhatsApp-inspired cross-platform messaging app built with Quasar (Vue 3) and Supabase, targeting **Remote Team Professionals**, specifically adapted to remote gym owners (e.g., franchise operators coordinating trainers, schedules, and client updates across locations/time zones). 
+Ossome is a WhatsApp-inspired cross-platform messaging app built with Quasar (Vue 3) and Supabase, targeting **Jiu-Jitsu gym owners and teams** (e.g., gym owners coordinating trainers, schedules, and member communication across locations/time zones). 
 
 This persona fits the "Remote Team Professional" mold: gym owners face thread overload from daily check-ins, missed action items (e.g., "Update equipment inventory"), context switching between client bookings and staff shifts, and timezone coordination for global teams. Pain points are addressed via core messaging infrastructure + tailored AI features.
 

@@ -1,0 +1,207 @@
+// Platform-specific styles for iOS, Android, and PWA
+
+// =============================================
+// iOS-specific styles
+// =============================================
+.platform-ios {
+  // iOS-style rounded corners
+  .q-btn {
+    border-radius: 12px;
+  }
+  
+  .q-card {
+    border-radius: 12px;
+  }
+  
+  .q-dialog__inner {
+    .q-card {
+      border-radius: 14px;
+    }
+  }
+  
+  // iOS backdrop blur effect
+  .q-dialog__backdrop {
+    backdrop-filter: blur(10px);
+  }
+  
+  // iOS-style list items
+  .q-item {
+    border-radius: 10px;
+    margin: 2px 8px;
+  }
+  
+  // iOS-style form inputs
+  .q-field--filled .q-field__control {
+    border-radius: 10px;
+  }
+}
+
+// =============================================
+// Android-specific styles (Material Design)
+// =============================================
+.platform-android {
+  // Material Design uppercase buttons
+  .q-btn {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  // Material Design sharp corners
+  .q-card {
+    border-radius: 4px;
+  }
+  
+  .q-dialog__inner {
+    .q-card {
+      border-radius: 4px;
+    }
+  }
+  
+  // Material elevation shadows
+  .q-card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// =============================================
+// iOS Safe Area Support
+// =============================================
+// Handle notched devices (iPhone X and newer)
+.q-page {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.q-header {
+  padding-top: env(safe-area-inset-top);
+}
+
+.q-footer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.q-drawer {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+// Fixed action buttons (like FAB)
+.fixed-bottom-right {
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  right: calc(16px + env(safe-area-inset-right));
+}
+
+.fixed-bottom {
+  bottom: env(safe-area-inset-bottom);
+}
+
+// =============================================
+// Keyboard Handling
+// =============================================
+// When keyboard is open, adjust page container
+.keyboard-open {
+  .q-page-container {
+    padding-bottom: 0;
+  }
+  
+  // Adjust chat input when keyboard appears
+  .chat-input-container {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+// =============================================
+// Touch Optimization
+// =============================================
+// Larger touch targets for mobile
+@media (max-width: 768px) {
+  .q-btn {
+    min-height: 44px; // iOS minimum touch target
+    min-width: 44px;
+  }
+  
+  .q-item {
+    min-height: 48px; // Material minimum touch target
+  }
+  
+  // Prevent text selection on buttons
+  .q-btn,
+  .q-item {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+// =============================================
+// Scrolling Performance
+// =============================================
+// Smooth scrolling on mobile
+.q-page,
+.q-scroll-area,
+.q-virtual-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+// Prevent bounce on iOS for specific containers
+.no-bounce {
+  overscroll-behavior: none;
+}
+
+// =============================================
+// Dark Mode Support (Platform-aware)
+// =============================================
+body.body--dark {
+  // iOS dark mode
+  &.platform-ios {
+    .q-card {
+      background: rgba(28, 28, 30, 0.95);
+      backdrop-filter: blur(20px);
+    }
+  }
+  
+  // Android dark mode
+  &.platform-android {
+    .q-card {
+      background: #1e1e1e;
+    }
+  }
+}
+
+// =============================================
+// PWA-specific styles
+// =============================================
+.standalone {
+  // When installed as PWA
+  .q-header {
+    // Add extra padding for status bar
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+  }
+}
+
+// =============================================
+// Custom Utilities
+// =============================================
+// Prevent pull-to-refresh on specific areas
+.no-pull-refresh {
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
+// Smooth transitions
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// iOS-style backdrop
+.ios-backdrop {
+  backdrop-filter: blur(20px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.7);
+}
+
+body.body--dark .ios-backdrop {
+  background-color: rgba(28, 28, 30, 0.7);
+}
+

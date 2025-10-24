@@ -38,14 +38,17 @@
           </span>
         </div>
       </div>
+      <!-- Media Gallery Button -->
       <q-btn
         flat
         round
-        icon="smart_toy"
-        @click="showScheduleQuery = true"
+        icon="photo_library"
+        @click="showMediaGallery = true"
       >
-        <q-tooltip>Ask AI about schedules</q-tooltip>
+        <q-tooltip>View shared media</q-tooltip>
       </q-btn>
+      
+      <!-- Chat Menu Button -->
       <q-btn
         flat
         round
@@ -95,19 +98,20 @@
           class="q-mb-md"
           :class="{ 'row justify-end': message.sent, 'row justify-start': !message.sent }"
         >
-          <div
-            class="message-bubble"
-            :class="{
-              'bg-primary text-white': message.sent && message.status === 'sent',
-              'bg-blue-2 text-primary': message.sent && message.status === 'sending',
-              'bg-grey-3 text-black': !message.sent
-            }"
-            style="max-width: 70%; border-radius: 18px; padding: 12px 16px;"
-          >
-            <div class="text-body2">{{ message.text }}</div>
+          <!-- Media Message -->
+          <div v-if="message.messageType === 'image' || message.messageType === 'video'" 
+               :class="{ 'sent-media': message.sent }">
+            <MediaMessage
+              :message-type="message.messageType"
+              :media-url="message.mediaUrl!"
+              :caption="message.text"
+              :thumbnail-url="message.thumbnailUrl"
+              :duration="message.duration"
+              :is-sent="message.sent"
+            />
             <div
               class="text-caption q-mt-xs"
-              :class="message.sent ? (message.status === 'sending' ? 'text-primary' : 'text-blue-1') : 'text-grey-6'"
+              :class="message.sent ? 'text-right text-blue-1' : 'text-grey-6'"
             >
               {{ message.timestamp }}
               
@@ -148,6 +152,76 @@
                 </q-icon>
               </template>
             </div>
+            
+            <!-- Reactions for Media Messages -->
+            <MessageReactions 
+              v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+              :message-id="message.id"
+            />
+          </div>
+          
+          <!-- Text Message -->
+          <div v-else class="text-message-container">
+            <div
+              class="message-bubble"
+              :class="{
+                'bg-primary text-white': message.sent && message.status === 'sent',
+                'bg-blue-2 text-primary': message.sent && message.status === 'sending',
+                'bg-grey-3 text-black': !message.sent
+              }"
+              style="max-width: 70%; border-radius: 18px; padding: 12px 16px;"
+            >
+              <div class="text-body2">{{ message.text }}</div>
+              <div
+                class="text-caption q-mt-xs"
+                :class="message.sent ? (message.status === 'sending' ? 'text-primary' : 'text-blue-1') : 'text-grey-6'"
+              >
+                {{ message.timestamp }}
+                
+                <!-- Read Receipt Icons (for sent messages) -->
+                <template v-if="message.sent">
+                  <!-- Queued/sending -->
+                  <q-icon 
+                    v-if="message.status === 'sending'" 
+                    name="schedule" 
+                    size="14px" 
+                    class="q-ml-xs"
+                  >
+                    <q-tooltip>Queued - will send when online</q-tooltip>
+                  </q-icon>
+                  
+                  <!-- Single checkmark: sent -->
+                  <q-icon 
+                    v-else-if="message.readCount === 0"
+                    name="done" 
+                    size="14px" 
+                    class="q-ml-xs"
+                  />
+                  
+                  <!-- Blue double checkmark: read -->
+                  <q-icon 
+                    v-else
+                    name="done_all" 
+                    size="14px" 
+                    color="blue" 
+                    class="q-ml-xs"
+                  >
+                    <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
+                      Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
+                    </q-tooltip>
+                    <q-tooltip v-else>
+                      Read
+                    </q-tooltip>
+                  </q-icon>
+                </template>
+              </div>
+            </div>
+            
+            <!-- Reactions for Text Messages -->
+            <MessageReactions 
+              v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+              :message-id="message.id"
+            />
           </div>
         </div>
       </div>
@@ -162,14 +236,28 @@
 
     <!-- Message Input -->
     <div class="bg-white shadow-1">
-      <!-- Smart Reply Chips -->
-      <SmartReplyChips 
-        :last-message="lastMessage" 
-        @reply-selected="handleSmartReply"
+      <!-- Upload Progress -->
+      <q-linear-progress 
+        v-if="uploading" 
+        :value="uploadProgress.percentage / 100" 
+        color="primary" 
+        class="q-mb-sm"
       />
       
       <div class="q-pa-md">
         <div class="row items-end q-gutter-sm">
+          <!-- Media Attachment Button -->
+          <q-btn
+            flat
+            round
+            icon="attach_file"
+            color="grey-7"
+            @click="showMediaPicker = true"
+            :disable="sending || uploading"
+          >
+            <q-tooltip>Attach photo or video</q-tooltip>
+          </q-btn>
+          
           <q-input
             v-model="newMessage"
             placeholder="Type a message..."
@@ -177,7 +265,7 @@
             dense
             class="col"
             @keyup.enter="handleSendMessage"
-            :disable="sending"
+            :disable="sending || uploading"
           />
           <q-btn
             round
@@ -185,11 +273,23 @@
             icon="send"
             @click="handleSendMessage"
             :loading="sending"
-            :disable="!newMessage.trim()"
+            :disable="!newMessage.trim() || uploading"
           />
         </div>
       </div>
     </div>
+
+    <!-- Media Picker Dialog -->
+    <MediaPicker 
+      v-model="showMediaPicker"
+      @media-selected="handleMediaSelected"
+    />
+
+    <!-- Media Gallery Dialog -->
+    <MediaGallery 
+      v-model="showMediaGallery"
+      :chat-id="chatId"
+    />
 
     <!-- Chat Menu Dialog -->
     <q-dialog v-model="showChatMenu">
@@ -218,8 +318,39 @@
               <q-item-section>
                 <q-item-label>{{ member.name }}</q-item-label>
               </q-item-section>
+              <q-item-section side v-if="member.id !== user?.id">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  :icon="isBlockedUser(member.id) ? 'check_circle' : 'block'"
+                  :color="isBlockedUser(member.id) ? 'positive' : 'negative'"
+                  @click="handleBlockToggle(member)"
+                >
+                  <q-tooltip>{{ isBlockedUser(member.id) ? 'Unblock' : 'Block' }} user</q-tooltip>
+                </q-btn>
+              </q-item-section>
             </q-item>
           </q-list>
+        </q-card-section>
+
+        <!-- Block Action (for direct chats) -->
+        <q-card-section v-if="chatInfo?.type === 'direct' && otherUserId">
+          <q-separator class="q-mb-md" />
+          <q-item
+            clickable
+            @click="handleBlockToggle(chatInfo.members[0])"
+          >
+            <q-item-section avatar>
+              <q-icon :name="isBlockedUser(otherUserId) ? 'check_circle' : 'block'" :color="isBlockedUser(otherUserId) ? 'positive' : 'negative'" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ isBlockedUser(otherUserId) ? 'Unblock User' : 'Block User' }}</q-item-label>
+              <q-item-label caption>
+                {{ isBlockedUser(otherUserId) ? 'Allow messages from this user' : 'Stop receiving messages from this user' }}
+              </q-item-label>
+            </q-item-section>
+          </q-item>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -227,9 +358,6 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-
-    <!-- Schedule Query Dialog -->
-    <ScheduleQueryDialog v-model="showScheduleQuery" />
   </q-page>
 </template>
 
@@ -238,10 +366,13 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useChat, type Message } from '../composables/useChat'
 import { usePresence } from '../composables/usePresence'
+import { useBlocking } from '../composables/useBlocking'
 import { user } from '../state/auth'
 import { Notify } from 'quasar'
-import ScheduleQueryDialog from '../components/ScheduleQueryDialog.vue'
-import SmartReplyChips from '../components/SmartReplyChips.vue'
+import MediaPicker from '../components/MediaPicker.vue'
+import MediaMessage from '../components/MediaMessage.vue'
+import MessageReactions from '../components/MessageReactions.vue'
+import MediaGallery from '../components/MediaGallery.vue'
 
 const route = useRoute()
 const chatId = route.params.id as string
@@ -252,10 +383,13 @@ const {
   loading,
   error,
   sending,
+  uploading,
+  uploadProgress,
   isOnline,
   queuedCount,
   loadMessages,
   sendMessage,
+  sendMediaMessage,
   markAsRead,
   getReadCount,
   getReadByUsers
@@ -264,15 +398,29 @@ const {
 // Presence system
 const { isUserOnline } = usePresence()
 
+// Blocking system
+const { isBlockedUser, blockUser, unblockUser } = useBlocking()
+
 const newMessage = ref('')
 const showChatMenu = ref(false)
-const showScheduleQuery = ref(false)
+const showMediaPicker = ref(false)
+const showMediaGallery = ref(false)
+
+// For direct chats, get the other user's ID
+const otherUserId = computed(() => {
+  if (chatInfo.value?.type === 'direct' && chatInfo.value.members) {
+    const otherMember = chatInfo.value.members.find((m: any) => m.id !== user.value?.id)
+    return otherMember?.id || null
+  }
+  return null
+})
 
 // Get last message for smart replies
 const lastMessage = computed(() => messages.value[messages.value.length - 1])
 
 const formattedMessages = computed(() => {
   return messages.value.map((msg: Message) => ({
+    id: msg.id,
     text: msg.content,
     sent: msg.sender_id === user.value?.id,
     timestamp: new Date(msg.created_at).toLocaleTimeString([], {
@@ -283,7 +431,11 @@ const formattedMessages = computed(() => {
     avatar: msg.sender_avatar,
     status: msg.status,
     readCount: getReadCount(msg),
-    readBy: getReadByUsers(msg)
+    readBy: getReadByUsers(msg),
+    messageType: msg.message_type,
+    mediaUrl: msg.media_url,
+    thumbnailUrl: msg.media_metadata?.thumbnailUrl,
+    duration: msg.media_metadata?.duration
   }))
 })
 
@@ -306,9 +458,53 @@ const handleSendMessage = async () => {
   }
 }
 
-const handleSmartReply = (text: string) => {
-  newMessage.value = text
-  // User can edit before sending or just tap send
+const handleMediaSelected = async (result: { file: File; type: 'image' | 'video'; caption?: string }) => {
+  try {
+    await sendMediaMessage(result.file, result.type, result.caption)
+    showMediaPicker.value = false
+    
+    Notify.create({
+      type: 'positive',
+      message: `${result.type === 'image' ? 'Photo' : 'Video'} sent successfully`,
+      position: 'top',
+      timeout: 2000
+    })
+  } catch (err) {
+    console.error('Error sending media:', err)
+    // Error notification is already shown in sendMediaMessage
+  }
+}
+
+async function handleBlockToggle(member: any) {
+  if (!user.value?.id || !member) return
+
+  const isBlocked = isBlockedUser(member.id)
+
+  try {
+    if (isBlocked) {
+      await unblockUser(member.id, user.value.id)
+      Notify.create({
+        type: 'positive',
+        message: `${member.name} unblocked`
+      })
+    } else {
+      const confirmed = confirm(`Block ${member.name}? You won't receive messages from this user.`)
+      if (!confirmed) return
+
+      await blockUser(member.id, user.value.id)
+      Notify.create({
+        type: 'positive',
+        message: `${member.name} blocked`
+      })
+    }
+    showChatMenu.value = false
+  } catch (err) {
+    console.error('Error toggling block:', err)
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to update block status'
+    })
+  }
 }
 
 // Mark messages as read when component is visible
@@ -326,5 +522,10 @@ watch(messages, () => {
 .message-bubble {
   word-wrap: break-word;
   word-break: break-word;
+}
+
+.sent-media {
+  max-width: 70%;
+  margin-left: auto;
 }
 </style>

@@ -1,0 +1,38 @@
+# Cursor AI Project Rules
+
+## Database Migrations
+
+**CRITICAL:** Never ask the user to copy-paste SQL into Supabase dashboard.
+
+### Always use the automated script:
+```bash
+pnpm db:apply <sql-file-path>
+```
+
+This script is located at `messageAI-Quasar/scripts/apply-sql.sh` and handles:
+- Complex PL/pgSQL functions
+- Large SQL files
+- Automatic fallback between Supabase CLI and psql
+- Proper error handling
+
+See `messageAI-Quasar/DATABASE_WORKFLOW.md` for full details.
+
+## Code Style
+
+- Use TypeScript for all new code
+- Follow Vue 3 Composition API patterns
+- Use Quasar components when available
+- Prefer composables over mixins
+
+## Testing
+
+- Run `pnpm test` before committing
+- E2E tests: `pnpm test:e2e`
+- Critical path tests: `pnpm test:e2e:critical`
+
+## Development
+
+- Start dev server: `pnpm dev`
+- Uses Vite + Quasar
+- Hot reload enabled
+

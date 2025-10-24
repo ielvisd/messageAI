@@ -6,6 +6,7 @@
     "src-capacitor",
     "src-cordova",
     "quasar.config.*.temporary.compiled*",
-    "supabase/functions/**/*"
+    "supabase/functions/**/*",
+    "e2e/**/*"
   ]
 }

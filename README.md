@@ -1,6 +1,6 @@
-# MessageAI
+# Ossome
 
-AI-Powered Cross-Platform Messaging App for Remote Teams
+AI-Powered Team Communication for Jiu-Jitsu Gyms
 
 Built with Quasar Framework, Supabase, and Capacitor for **iOS, Android, and Web**.
 

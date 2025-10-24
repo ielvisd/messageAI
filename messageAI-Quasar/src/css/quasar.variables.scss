@@ -8,18 +8,21 @@
 // Your own variables (that are declared here) and Quasar's own
 // ones will be available out of the box in your .vue/.scss/.sass files
 
-// It's highly recommended to change the default colors
-// to match your app's branding.
-// Tip: Use the "Theme Builder" on Quasar's documentation website.
+// Custom Ossome Color Palette
+// Dark Navy:    #2B2D42
+// Cool Gray:    #8D99AE
+// Light Gray:   #EDF2F4
+// Bright Red:   #EF233C
+// Deep Red:     #D90429
 
-$primary: #1976d2;
-$secondary: #26a69a;
-$accent: #9c27b0;
+$primary: #2B2D42;    // Dark Navy - main brand color
+$secondary: #8D99AE;  // Cool Gray - secondary actions
+$accent: #EF233C;     // Bright Red - highlights & CTAs
 
-$dark: #1d1d1d;
-$dark-page: #121212;
+$dark: #2B2D42;       // Dark Navy for dark mode
+$dark-page: #1a1b2e;  // Slightly darker than primary
 
-$positive: #21ba45;
-$negative: #c10015;
-$info: #31ccec;
-$warning: #f2c037;
+$positive: #21ba45;   // Keep green for success
+$negative: #D90429;   // Deep Red for errors/danger
+$info: #8D99AE;       // Cool Gray for info
+$warning: #f2c037;    // Keep yellow for warnings

@@ -1,1 +1,47 @@
 // app global css in SCSS form
+
+// Import platform-specific styles
+@import './platform.scss';
+
+// Custom Ossome Color Utilities
+// Using the defined color palette: #2B2D42, #8D99AE, #EDF2F4, #EF233C, #D90429
+
+.bg-light-gray {
+  background-color: #EDF2F4 !important;
+}
+
+.text-light-gray {
+  color: #EDF2F4 !important;
+}
+
+.bg-cool-gray {
+  background-color: #8D99AE !important;
+}
+
+.text-cool-gray {
+  color: #8D99AE !important;
+}
+
+.bg-dark-navy {
+  background-color: #2B2D42 !important;
+}
+
+.text-dark-navy {
+  color: #2B2D42 !important;
+}
+
+.bg-bright-red {
+  background-color: #EF233C !important;
+}
+
+.text-bright-red {
+  color: #EF233C !important;
+}
+
+.bg-deep-red {
+  background-color: #D90429 !important;
+}
+
+.text-deep-red {
+  color: #D90429 !important;
+}

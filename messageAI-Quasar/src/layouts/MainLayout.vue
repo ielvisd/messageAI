@@ -5,24 +5,12 @@
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title>
-          MessageAI
+          Ossome
         </q-toolbar-title>
 
         <q-space />
 
-        <!-- Triage Dashboard Button -->
-        <q-btn 
-          v-if="isAuthenticated"
-          flat 
-          round
-          dense
-          icon="dashboard" 
-          @click="showTriage = true"
-        >
-          <q-tooltip>Owner Triage Dashboard</q-tooltip>
-        </q-btn>
-
-        <!-- User Menu (Mobile Friendly) -->
+        <!-- User Menu -->
         <q-btn v-if="isAuthenticated && profile" flat dense round>
           <q-avatar size="32px" color="primary" text-color="white">
             <img v-if="profile.avatar_url" :src="profile.avatar_url" />
@@ -41,12 +29,29 @@
                 <q-item-section>
                   <q-item-label>{{ profile.name }}</q-item-label>
                   <q-item-label caption>{{ profile?.email || user?.email }}</q-item-label>
+                  <q-item-label caption v-if="profile?.role">
+                    <q-badge :color="getRoleColor(profile.role)">{{ getRoleLabel(profile.role) }}</q-badge>
+                  </q-item-label>
                 </q-item-section>
               </q-item>
               
               <q-separator />
               
-              <q-item clickable v-close-popup @click="handleSignOut">
+              <q-item clickable v-close-popup @click="showProfileEditor = true">
+                <q-item-section avatar>
+                  <q-icon name="photo_camera" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Edit Profile Picture</q-item-label>
+                </q-item-section>
+              </q-item>
+              
+              <q-separator />
+              
+              <q-item 
+                clickable 
+                @click="handleSignOut"
+              >
                 <q-item-section avatar>
                   <q-icon name="logout" />
                 </q-item-section>
@@ -60,100 +65,232 @@
       </q-toolbar>
     </q-header>
 
+    <!-- Left Drawer (Navigation) -->
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-list>
-        <q-item-label header> Essential Links </q-item-label>
+        <q-item-label header>
+          Navigation
+        </q-item-label>
 
-        <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
+        <!-- Role-Based Navigation -->
+        <q-item v-if="userRole === 'owner'" clickable @click="navigate('/dashboard')">
+          <q-item-section avatar>
+            <q-icon name="dashboard" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Dashboard</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-item v-if="userRole === 'owner'" clickable @click="navigate('/settings')">
+          <q-item-section avatar>
+            <q-icon name="settings" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Settings</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-item v-if="userRole === 'instructor'" clickable @click="navigate('/instructor-dashboard')">
+          <q-item-section avatar>
+            <q-icon name="fitness_center" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>My Classes</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-item v-if="userRole === 'parent'" clickable @click="navigate('/parent-dashboard')">
+          <q-item-section avatar>
+            <q-icon name="child_care" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Kids Dashboard</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-separator class="q-my-md" />
+
+        <q-item clickable @click="navigate('/chats')">
+          <q-item-section avatar>
+            <q-icon name="chat" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Messages</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-item clickable @click="navigate('/schedule')">
+          <q-item-section avatar>
+            <q-icon name="event" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Schedule</q-item-label>
+          </q-item-section>
+        </q-item>
+
+        <q-item clickable @click="navigate('/ai-assistant')">
+          <q-item-section avatar>
+            <q-icon name="smart_toy" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>AI Assistant</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
     <q-page-container>
       <router-view />
     </q-page-container>
-
-    <!-- Triage Dashboard Dialog -->
-    <q-dialog v-model="showTriage" full-width full-height>
-      <MessageTriageView />
-    </q-dialog>
+    
+    <!-- Profile Picture Editor Dialog -->
+    <ProfilePictureEditor 
+      v-model="showProfileEditor"
+      :avatar-url="profile?.avatar_url"
+      @avatar-updated="handleAvatarUpdated"
+    />
   </q-layout>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
-import MessageTriageView from '../components/MessageTriageView.vue';
-import { user, profile, isAuthenticated, signOut } from '../state/auth';
-import { usePresence } from '../composables/usePresence';
-import { usePushNotifications } from '../composables/usePushNotifications';
+import { ref, computed, onMounted } from 'vue'
+import { isAuthenticated, signOut, user } from '../state/auth'
+import { useRouter } from 'vue-router'
+import { supabase } from '../boot/supabase'
+import { usePresence } from '../composables/usePresence'
+import { usePushNotifications } from '../composables/usePushNotifications'
+import ProfilePictureEditor from '../components/ProfilePictureEditor.vue'
+import { Notify } from 'quasar'
 
 // Initialize presence system (runs for entire app session)
-usePresence();
+usePresence()
 
 // Initialize push notifications (registers for push on native platforms)
-usePushNotifications();
+usePushNotifications()
 
+const router = useRouter()
 
-const linksList: EssentialLinkProps[] = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev',
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
-  },
-];
+const leftDrawerOpen = ref(false)
+const showProfileEditor = ref(false)
+const profile = ref<{ name?: string; email?: string; avatar_url?: string; role?: string; gym_id?: string } | null>(
+  null
+)
+const gymName = ref<string>('')
 
-const leftDrawerOpen = ref(false);
-const showTriage = ref(false);
-const router = useRouter();
+const userRole = computed(() => (user.value as any)?.role || profile.value?.role || null)
 
 function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
+  leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+function navigate(path: string) {
+  void router.push(path)
+  leftDrawerOpen.value = false
+}
+
+function handleAvatarUpdated(url: string | null) {
+  if (profile.value) {
+    profile.value.avatar_url = url || undefined
+  }
+  // Also update the user's metadata in the auth state
+  if (user.value) {
+    user.value.user_metadata = {
+      ...user.value.user_metadata,
+      avatar_url: url
+    }
+  }
+}
+
+function getRoleColor(role: string) {
+  switch (role) {
+    case 'owner': return 'purple'
+    case 'instructor': return 'blue'
+    case 'student': return 'green'
+    case 'parent': return 'orange'
+    default: return 'grey'
+  }
+}
+
+function getRoleLabel(role: string) {
+  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
 async function handleSignOut() {
+  console.log('👋 Sign out clicked')
   try {
-    await signOut();
-    await router.push('/login');
-  } catch (error) {
-    console.error('Sign out error:', error);
+    Notify.create({
+      type: 'info',
+      message: 'Signing out...',
+      timeout: 1000
+    })
+    
+    const { error } = await signOut()
+    if (error) {
+      console.error('❌ Sign out error:', error)
+      Notify.create({
+        type: 'negative',
+        message: 'Failed to sign out. Please try again.'
+      })
+    } else {
+      console.log('✅ Sign out successful, redirecting to login')
+      Notify.create({
+        type: 'positive',
+        message: 'Signed out successfully'
+      })
+      void router.push('/login')
+    }
+  } catch (err) {
+    console.error('❌ Sign out exception:', err)
+    Notify.create({
+      type: 'negative',
+      message: 'An error occurred while signing out'
+    })
   }
 }
+
+onMounted(async () => {
+  if (isAuthenticated.value && user.value) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, email, avatar_url, role, gym_id')
+      .eq('id', user.value.id)
+      .single()
+
+    if (error) {
+      console.error('Error loading profile:', error)
+    } else {
+      profile.value = data
+      
+      // Load gym name if user has a gym
+      if (data?.gym_id) {
+        const { data: gymData } = await supabase
+          .from('gyms')
+          .select('name')
+          .eq('id', data.gym_id)
+          .single()
+        
+        if (gymData) {
+          gymName.value = gymData.name
+        }
+      }
+    }
+  }
+})
 </script>
+
+<style lang="scss" scoped>
+// iOS Safe Area Support
+.q-header {
+  // Already handled by platform.scss global styles
+}
+
+.q-drawer {
+  // Already handled by platform.scss global styles
+}
+
+// Ensure content doesn't go under notch/home indicator
+:deep(.q-page-container) {
+  // This is handled by platform.scss but can be reinforced here if needed
+}
+</style>

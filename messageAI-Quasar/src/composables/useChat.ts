@@ -2,6 +2,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
 import { useNetwork } from './useNetwork'
+import { useMediaUpload } from './useMediaUpload'
 import { Preferences } from '@capacitor/preferences'
 import { Notify } from 'quasar'
 
@@ -13,13 +14,23 @@ export interface ReadReceipt {
   reader_name?: string
 }
 
+export interface MediaMetadata {
+  width?: number
+  height?: number
+  duration?: number
+  thumbnailUrl?: string
+  fileSize: number
+  mimeType: string
+}
+
 export interface Message {
   id: string
   chat_id: string
   sender_id: string
   content: string
-  message_type: 'text' | 'image' | 'file'
+  message_type: 'text' | 'image' | 'video' | 'file'
   media_url?: string | undefined
+  media_metadata?: MediaMetadata | undefined
   status: 'sending' | 'sent' | 'delivered' | 'read'
   read_at?: string | undefined
   created_at: string
@@ -45,8 +56,9 @@ export interface ChatInfo {
 interface QueuedMessage {
   chatId: string
   content: string
-  messageType: 'text' | 'image' | 'file'
+  messageType: 'text' | 'image' | 'video' | 'file'
   mediaUrl?: string
+  mediaMetadata?: MediaMetadata
   timestamp: string
 }
 
@@ -61,6 +73,9 @@ export function useChat(chatId: string) {
   
   // Network status
   const { isOnline } = useNetwork()
+  
+  // Media upload
+  const { uploadMedia, uploadProgress, uploading } = useMediaUpload()
   
   const QUEUE_KEY = `message_queue_${chatId}`
 
@@ -148,7 +163,6 @@ export function useChat(chatId: string) {
 
       if (messagesError) throw new Error('Failed to load messages')
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages.value = messagesData?.map((msg: any) => ({
         id: msg.id,
         chat_id: msg.chat_id,
@@ -237,12 +251,13 @@ export function useChat(chatId: string) {
     }
   }
 
-  const addToQueue = async (content: string, messageType: 'text' | 'image' | 'file', mediaUrl?: string) => {
+  const addToQueue = async (content: string, messageType: 'text' | 'image' | 'video' | 'file', mediaUrl?: string, mediaMetadata?: MediaMetadata) => {
     const queuedMessage: QueuedMessage = {
       chatId,
       content,
       messageType,
       ...(mediaUrl && { mediaUrl }),
+      ...(mediaMetadata && { mediaMetadata }),
       timestamp: new Date().toISOString()
     }
     
@@ -339,9 +354,7 @@ export function useChat(chatId: string) {
         read_at: data.read_at || undefined,
         created_at: data.created_at,
         updated_at: data.updated_at,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sender_name: (data.profiles as any).name || undefined,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sender_avatar: (data.profiles as any).avatar_url || undefined
       }
 
@@ -359,6 +372,45 @@ export function useChat(chatId: string) {
       
       error.value = err instanceof Error ? err.message : 'Failed to send message'
       console.error('Error sending message:', err)
+    } finally {
+      sending.value = false
+    }
+  }
+
+  const sendMediaMessage = async (file: File, mediaType: 'image' | 'video', caption?: string) => {
+    if (!user.value || !chatId) return
+
+    sending.value = true
+    error.value = null
+
+    try {
+      // Upload media file
+      const { url, metadata } = await uploadMedia(file, chatId, mediaType)
+
+      // Send message with media URL
+      await sendMessage(
+        caption || `Shared a ${mediaType}`,
+        mediaType,
+        url
+      )
+
+      // Update the last message with metadata
+      if (messages.value.length > 0) {
+        const lastMessage = messages.value[messages.value.length - 1]
+        lastMessage.media_metadata = metadata
+      }
+
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to send media'
+      console.error('Error sending media:', err)
+      
+      Notify.create({
+        type: 'negative',
+        message: 'Failed to send media',
+        position: 'top'
+      })
+      
+      throw err
     } finally {
       sending.value = false
     }
@@ -447,7 +499,6 @@ export function useChat(chatId: string) {
           },
           (payload) => {
             if (payload.eventType === 'INSERT') {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const newMessage = payload.new as any
               const message: Message = {
                 id: newMessage.id,
@@ -470,7 +521,6 @@ export function useChat(chatId: string) {
                 messages.value.push(message)
               }
             } else if (payload.eventType === 'UPDATE') {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const updatedMessage = payload.new as any
               const messageIndex = messages.value.findIndex(m => m.id === updatedMessage.id)
               if (messageIndex !== -1 && messages.value[messageIndex]) {
@@ -549,10 +599,13 @@ export function useChat(chatId: string) {
     loading: computed(() => loading.value),
     error: computed(() => error.value),
     sending: computed(() => sending.value),
+    uploading: computed(() => uploading.value),
+    uploadProgress: computed(() => uploadProgress.value),
     isOnline,
     queuedCount: computed(() => messageQueue.value.length),
     loadMessages,
     sendMessage,
+    sendMediaMessage,
     markAsRead,
     updateMessageStatus,
     getReadCount,

@@ -20,6 +20,5 @@ export default supabase
 
 // Make Supabase available globally for E2E tests
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).supabase = supabase
 }

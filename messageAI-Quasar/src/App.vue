@@ -11,8 +11,13 @@
 
 <script setup lang="ts">
 import { authInitialized } from './state/auth'
+import { useDeepLink } from './composables/useDeepLink'
+
 // Auth is now initialized in the boot file (src/boot/auth.ts)
 // This ensures it happens before router navigation
+
+// Set up deep linking for native apps
+useDeepLink()
 </script>
 
 <style>

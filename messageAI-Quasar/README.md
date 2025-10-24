@@ -1,6 +1,6 @@
-# MessageAI (messageai)
+# Ossome
 
-AI-Powered Cross-Platform Messaging App for Remote Teams
+AI-Powered Team Communication for Jiu-Jitsu Gyms
 
 ## Install the dependencies
 

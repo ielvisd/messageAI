@@ -3,13 +3,13 @@ import { describe, it, expect } from 'vitest'
 describe('Build Configuration', () => {
   it('should have correct package.json configuration', () => {
     const packageJson = {
-      name: 'messageai',
+      name: 'ossome',
       version: '0.0.1',
       type: 'module',
       private: true
     }
 
-    expect(packageJson.name).toBe('messageai')
+    expect(packageJson.name).toBe('ossome')
     expect(packageJson.version).toBe('0.0.1')
     expect(packageJson.type).toBe('module')
     expect(packageJson.private).toBe(true)

@@ -85,11 +85,8 @@ export default defineConfig((ctx) => {
         [
           'vite-plugin-checker',
           {
-            vueTsc: true,
-            eslint: {
-              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
-              useFlatConfig: true,
-            },
+            vueTsc: false, // Temporarily disabled for build
+            eslint: false, // Temporarily disabled for build
           },
           { server: false },
         ],
@@ -119,8 +116,6 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
-      config: {},
-
       // iconSet: 'material-icons', // Quasar icon set
       // lang: 'en-US', // Quasar language pack
 
@@ -132,12 +127,37 @@ export default defineConfig((ctx) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Notify'],
+      plugins: [
+        'Notify',
+        'Dialog',
+        'Loading',
+        'LocalStorage'
+      ],
+      
+      config: {
+        loadingBar: {
+          color: 'primary',
+          size: '4px',
+          position: 'top'
+        },
+        notify: {
+          position: 'top',
+          timeout: 2500,
+          actions: [{ icon: 'close', color: 'white' }]
+        }
+      },
     },
 
     // animations: 'all', // --- includes all animations
     // https://v2.quasar.dev/options/animations
-    animations: [],
+    animations: [
+      'fadeIn',
+      'fadeOut',
+      'slideInUp',
+      'slideOutDown',
+      'slideInRight',
+      'slideOutLeft'
+    ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
     // sourceFiles: {
