@@ -401,33 +401,44 @@ export function useGymAI() {
           timestamp: new Date().toISOString()
         });
         
+        // Execute tools and collect results
+        const toolResultsArray = [];
         for (const toolCall of data.tool_calls) {
           console.log(`🔨 Executing tool: ${toolCall.name}`, toolCall.parameters);
           const toolResult = await executeTool(toolCall.name, toolCall.parameters, gymId);
           console.log(`✅ Tool result for ${toolCall.name}:`, toolResult);
           
-          // Add tool result to context
+          toolResultsArray.push({
+            tool: toolCall.name,
+            result: toolResult
+          });
+          
+          // Add summary to context (not full data to keep payload small)
+          const contextSummary = toolCall.name === 'get_schedule' && toolResult.schedules
+            ? `Tool ${toolCall.name}: Found ${toolResult.schedules.length} classes`
+            : `Tool ${toolCall.name}: Completed`;
+          
           conversationState.value.context = [
             ...(conversationState.value.context || []),
-            `Tool ${toolCall.name}: ${JSON.stringify(toolResult)}`
+            contextSummary
           ];
         }
 
         console.log('🔄 Calling AI again with tool results...');
-        // Call AI again with tool results
+        // Call AI again with tool results (don't send full conversationState to reduce payload size)
         const { data: followupData, error: followupError } = await supabase.functions.invoke('gym-ai-assistant', {
           body: {
             message: userMessage,
             conversationHistory: messages.value,
-            conversationState: conversationState.value,
+            conversationState: {
+              preferences: conversationState.value.preferences,
+              context: (conversationState.value.context || []).slice(-5) // Only last 5 context items
+            },
             gymId,
             userId: user.value?.id,
             tools,
             userTimezone: timezone,
-            toolResults: data.tool_calls.map((tc: { name: string }, idx: number) => ({
-              tool: tc.name,
-              result: conversationState.value.context?.[conversationState.value.context.length - data.tool_calls.length + idx]
-            }))
+            toolResults: toolResultsArray
           }
         });
 

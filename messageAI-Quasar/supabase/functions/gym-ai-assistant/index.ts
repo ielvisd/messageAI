@@ -95,8 +95,25 @@ Be friendly, concise, and helpful. When making RSVPs or checking schedules, use 
     if (toolResults && toolResults.length > 0) {
       // Add a message summarizing the tool results for the AI
       const toolSummary = toolResults.map((tr: any) => {
-        const result = typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result, null, 2)
-        return `Tool "${tr.tool}" returned:\n${result}`
+        // Format result based on tool type to keep it concise
+        let formattedResult = ''
+        
+        if (tr.tool === 'get_schedule' && tr.result?.schedules) {
+          // For schedules, provide a concise summary
+          const schedules = tr.result.schedules
+          formattedResult = `Found ${schedules.length} classes:\n` + 
+            schedules.slice(0, 20).map((s: any, idx: number) => 
+              `${idx + 1}. ${s.class_type} - ${s.day_of_week} ${s.start_time}-${s.end_time} with ${s.instructor_name || 'TBD'} (${s.level || 'All Levels'})${s.notes ? ' - ' + s.notes : ''}`
+            ).join('\n') +
+            (schedules.length > 20 ? `\n... and ${schedules.length - 20} more classes` : '')
+        } else {
+          // For other tools, stringify the result
+          formattedResult = typeof tr.result === 'string' 
+            ? tr.result 
+            : JSON.stringify(tr.result, null, 2)
+        }
+        
+        return `Tool "${tr.tool}" returned:\n${formattedResult}`
       }).join('\n\n')
       
       messages.push({
