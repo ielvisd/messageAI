@@ -57,29 +57,21 @@ async function fetchUserGyms(): Promise<Gym[]> {
     // Filter out any null or undefined values
     const gymIds = rawGymIds.filter((id: any) => id != null)
     
-    console.log('🏋️ fetchUserGyms - profile.gym_ids:', gymIds)
-    console.log('🏋️ fetchUserGyms - profile.gym_id:', profile.value.gym_id)
-    
     // Also include primary gym_id if it exists and not in gym_ids
     if (profile.value.gym_id && !gymIds.includes(profile.value.gym_id)) {
       gymIds.push(profile.value.gym_id)
-      console.log('🏋️ Added primary gym_id to gymIds:', gymIds)
     }
 
     if (gymIds.length === 0) {
-      console.warn('⚠️ No gym IDs found in profile')
       return []
     }
 
-    console.log('🏋️ Fetching gyms for IDs:', gymIds)
     const { data, error: gymError } = await supabase
       .from('gyms')
       .select('id, name, locations')
       .in('id', gymIds)
 
     if (gymError) throw gymError
-    
-    console.log('🏋️ Fetched gyms:', data)
 
     return data || []
   } catch (err) {
@@ -101,17 +93,12 @@ export async function fetchSchedules(options?: {
     loading.value = true
     error.value = null
 
-    console.log('🔄 fetchSchedules called with options:', options)
-
     // First, fetch user's gyms
     const userGyms = await fetchUserGyms()
     gyms.value = userGyms
 
-    console.log('🔄 fetchSchedules - userGyms:', userGyms)
-
     // If no gyms, nothing to fetch
     if (userGyms.length === 0) {
-      console.warn('⚠️ No user gyms found, returning empty schedules')
       schedules.value = []
       return
     }
@@ -119,12 +106,9 @@ export async function fetchSchedules(options?: {
     // Determine which gym IDs to fetch schedules for
     const targetGymIds = options?.gymIds || userGyms.map(g => g.id)
 
-    console.log('🔄 fetchSchedules - targetGymIds:', targetGymIds)
-
     // Initialize selected gyms (all by default)
     if (selectedGymIds.value.length === 0) {
       selectedGymIds.value = targetGymIds
-      console.log('🔄 fetchSchedules - initialized selectedGymIds:', selectedGymIds.value)
     }
 
     // Fetch schedules from gym_schedules table
@@ -136,8 +120,6 @@ export async function fetchSchedules(options?: {
     const { data: scheduleData, error: scheduleError } = await query
 
     if (scheduleError) throw scheduleError
-
-    console.log('🔄 fetchSchedules - raw scheduleData count:', scheduleData?.length || 0)
 
     // Map schedules and add gym names
     let mappedSchedules: ScheduleClass[] = (scheduleData || []).map(schedule => ({
@@ -184,18 +166,13 @@ export async function fetchSchedules(options?: {
  * Toggle a gym in the filter selection
  */
 function toggleGymFilter(gymId: string) {
-  console.log('🔀 toggleGymFilter called for gym:', gymId)
-  console.log('🔀 Current selectedGymIds:', selectedGymIds.value)
-  
   const index = selectedGymIds.value.indexOf(gymId)
   if (index > -1) {
     // Remove from selection
     selectedGymIds.value = selectedGymIds.value.filter(id => id !== gymId)
-    console.log('🔀 Removed gym, new selectedGymIds:', selectedGymIds.value)
   } else {
     // Add to selection
     selectedGymIds.value = [...selectedGymIds.value, gymId]
-    console.log('🔀 Added gym, new selectedGymIds:', selectedGymIds.value)
   }
 }
 

@@ -211,7 +211,6 @@ async function loadInstructors() {
     
     // Don't query if gym_id is not valid
     if (!props.gymId || props.gymId === '' || props.gymId === 'null') {
-      console.warn('⚠️ Cannot load instructors: invalid gym_id', props.gymId)
       instructorOptions.value = []
       return
     }

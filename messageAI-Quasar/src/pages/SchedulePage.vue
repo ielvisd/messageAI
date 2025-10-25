@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-lg">
     <div class="q-gutter-md">
       <div class="row items-center justify-between q-mb-md">
         <div class="text-h4">Class Schedule</div>
@@ -68,22 +68,16 @@
 
       <!-- Multi-Gym Schedule Calendar -->
       <div v-else-if="filteredSchedules.length > 0">
-        <div class="q-mb-md">
-          <div class="q-mb-xs text-caption text-grey-7">
-            Showing {{ filteredSchedules.length }} classes from {{ selectedGymIds.length }} gym(s)
-          </div>
-          <div class="q-mb-xs text-caption text-grey-6">
-            Total gyms available: {{ gyms.length }}
-          </div>
-          <div class="q-mb-xs text-caption text-grey-6">
-            Selected gym IDs: {{ selectedGymIds.length > 0 ? selectedGymIds.join(', ').substring(0, 50) + '...' : 'none' }}
+        <div class="q-mb-lg q-px-sm">
+          <div class="text-body2 text-grey-7">
+            Showing {{ filteredSchedules.length }} class{{ filteredSchedules.length === 1 ? '' : 'es' }} from {{ selectedGymIds.length }} gym{{ selectedGymIds.length === 1 ? '' : 's' }}
           </div>
         </div>
         
         <!-- Schedule List (grouped by day) -->
-        <div class="q-gutter-md">
-          <div v-for="day in daysOfWeek" :key="day" class="q-mb-md">
-            <div class="text-h6 text-weight-medium q-mb-sm">{{ day }}</div>
+        <div class="q-gutter-md q-px-sm">
+          <div v-for="day in daysOfWeek" :key="day" class="q-mb-lg">
+            <div class="text-h6 text-weight-medium q-mb-md q-mt-sm">{{ day }}</div>
             <q-list bordered separator>
               <q-item
                 v-for="schedule in getSchedulesForDay(day)"
@@ -608,17 +602,9 @@ async function handleDeleteClass(schedule: any) {
 
 async function loadSchedules() {
   try {
-    console.log('📅 SchedulePage: loadSchedules called')
-    console.log('📅 SchedulePage: profile:', profile.value)
-    console.log('📅 SchedulePage: profile.gym_ids:', (profile.value as any)?.gym_ids)
-    
     // TODO: Check gym settings to see if instructor names should be shown
     // For now, default to showing them
     await fetchSchedules({ showInstructorNames: true })
-    
-    console.log('📅 SchedulePage: After fetchSchedules - gyms:', gyms.value)
-    console.log('📅 SchedulePage: After fetchSchedules - schedules count:', filteredSchedules.value.length)
-    console.log('📅 SchedulePage: After fetchSchedules - selectedGymIds:', selectedGymIds.value)
     
     // Load user's RSVPs if logged in
     if (user.value?.id) {
@@ -629,23 +615,7 @@ async function loadSchedules() {
   }
 }
 
-// Watch for gym filter changes
-watch(selectedGymIds, (newIds, oldIds) => {
-  console.log('🔍 selectedGymIds changed:', { oldIds, newIds })
-  console.log('🔍 filteredSchedules count after change:', filteredSchedules.value.length)
-})
-
-// Watch for filtered schedules changes
-watch(filteredSchedules, (newSchedules) => {
-  console.log('🔍 filteredSchedules changed, count:', newSchedules.length)
-  console.log('🔍 Schedules by gym:', newSchedules.reduce((acc, s) => {
-    acc[s.gym_name || 'unknown'] = (acc[s.gym_name || 'unknown'] || 0) + 1
-    return acc
-  }, {} as Record<string, number>))
-})
-
 onMounted(() => {
-  console.log('📅 SchedulePage: onMounted - profile:', profile.value)
   void loadSchedules()
 })
 </script>
