@@ -67,6 +67,14 @@ const routes: RouteRecordRaw[] = [
     children: [{ path: '', component: () => import('pages/InstructorDashboard.vue') }],
   },
 
+  // Class Roster (Instructors and Owners)
+  {
+    path: '/class-roster',
+    component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('pages/ClassRosterPage.vue') }],
+  },
+
   // Parent Dashboard
   {
     path: '/parent-dashboard',

@@ -1,5 +1,8 @@
 // app global css in SCSS form
 
+// Import Nunito font from Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+
 // Import platform-specific styles
 @import './platform.scss';
 
@@ -7,6 +10,7 @@
 body {
   font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 400;
+  font-size: 16px;
 }
 
 // Make headings slightly bolder with Nunito
@@ -14,6 +18,37 @@ h1, h2, h3, h4, h5, h6,
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6 {
   font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 600;
+}
+
+// Reduce font sizes on desktop for less overwhelming appearance
+@media (min-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1, .text-h1 {
+    font-size: 2.25rem !important; // Smaller than default h1
+  }
+
+  h2, .text-h2 {
+    font-size: 1.875rem !important; // Smaller than default h2
+  }
+
+  h3, .text-h3 {
+    font-size: 1.5rem !important; // Smaller than default h3
+  }
+
+  h4, .text-h4 {
+    font-size: 1.25rem !important; // Smaller than default h4
+  }
+
+  h5, .text-h5 {
+    font-size: 1.125rem !important; // Smaller than default h5
+  }
+
+  h6, .text-h6 {
+    font-size: 1rem !important; // Smaller than default h6
+  }
 }
 
 // Custom Ossome Color Utilities

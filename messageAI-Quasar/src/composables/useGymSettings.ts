@@ -8,6 +8,8 @@ type GymSettings = {
   instructorsEditOwnOnly: boolean;
   aiEnabled: boolean;
   aiAutoRespond: boolean;
+  // Attendance options
+  autoNoteOnOverfullOrUnrsvp?: boolean;
 };
 
 export function useGymSettings(gymId?: string) {
@@ -17,7 +19,8 @@ export function useGymSettings(gymId?: string) {
     instructorsCanCreateClasses: true,
     instructorsEditOwnOnly: true,
     aiEnabled: true,
-    aiAutoRespond: true
+    aiAutoRespond: true,
+    autoNoteOnOverfullOrUnrsvp: false
   });
   const loading = ref(false);
   const error = ref<string | null>(null);

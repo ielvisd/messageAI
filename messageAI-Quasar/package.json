@@ -23,7 +23,9 @@
     "prepare": "husky",
     "db:apply": "./scripts/apply-sql.sh",
     "db:apply-migrations": "./scripts/apply-sql.sh MIGRATIONS_TO_APPLY_MANUALLY.sql",
-    "demo:create": "node scripts/create-demo-accounts.js"
+    "demo:create": "node scripts/create-demo-accounts.js",
+    "demo:create-owner": "node scripts/create-owner-and-instructors.js",
+    "test:supabase": "node scripts/test-supabase-connection.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.53",

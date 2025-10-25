@@ -52,6 +52,27 @@
               </q-avatar>
               <div class="text-caption text-grey-7 q-mt-sm">Profile picture (optional)</div>
             </div>
+
+            <!-- Belt Selection (only for student role) -->
+            <div v-if="!invitation || invitation.role === 'student'" class="q-gutter-sm">
+              <div class="text-subtitle2 q-mb-sm">Current BJJ Belt</div>
+              <q-select
+                v-model="currentBelt"
+                :options="beltOptions"
+                label="Belt Color"
+                outlined
+                emit-value
+                map-options
+              />
+              <q-select
+                v-model="currentStripes"
+                :options="stripeOptions"
+                label="Stripes"
+                outlined
+                emit-value
+                map-options
+              />
+            </div>
             
             <q-input
               v-model="email"
@@ -120,6 +141,24 @@ const invitationToken = ref<string | null>(null)
 const invitation = ref<any>(null)
 const avatarUrl = ref<string | null>(null)
 const showAvatarEditor = ref(false)
+const currentBelt = ref('white')
+const currentStripes = ref(0)
+
+const beltOptions = [
+  { label: 'White Belt', value: 'white' },
+  { label: 'Blue Belt', value: 'blue' },
+  { label: 'Purple Belt', value: 'purple' },
+  { label: 'Brown Belt', value: 'brown' },
+  { label: 'Black Belt', value: 'black' }
+]
+
+const stripeOptions = [
+  { label: '0 Stripes', value: 0 },
+  { label: '1 Stripe', value: 1 },
+  { label: '2 Stripes', value: 2 },
+  { label: '3 Stripes', value: 3 },
+  { label: '4 Stripes', value: 4 }
+]
 
 const handleAvatarUpdated = (url: string | null) => {
   avatarUrl.value = url
@@ -196,13 +235,19 @@ const onSubmit = async () => {
     if (invitation.value) {
       await acceptInvitation(invitationToken.value!)
 
-      // Update user profile with gym_id, role, and parent_links
+      // Update user profile with gym_id, role, belt info, and parent_links
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       if (currentUser) {
         const metadata = invitation.value.metadata || {}
         const updates: any = {
           gym_id: invitation.value.gym_id,
           role: invitation.value.role
+        }
+
+        // Add belt info for students
+        if (invitation.value.role === 'student') {
+          updates.current_belt = currentBelt.value
+          updates.current_stripes = currentStripes.value
         }
 
         // If parent, link to students
@@ -221,6 +266,18 @@ const onSubmit = async () => {
         message: `Welcome to ${invitation.value.gyms?.name}!`
       })
     } else {
+      // For regular signup (no invitation), still save belt info
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser) {
+        await supabase
+          .from('profiles')
+          .update({
+            current_belt: currentBelt.value,
+            current_stripes: currentStripes.value
+          })
+          .eq('id', currentUser.id)
+      }
+
       Notify.create({
         type: 'positive',
         message: 'Signup successful! Please check your email and click the confirmation link to verify your account.',

@@ -131,6 +131,7 @@ export async function loadProfile() {
       id: data?.id,
       role: data?.role,
       gym_id: data?.gym_id,
+      gym_ids: data?.gym_ids,
       owned_gym_ids: data?.owned_gym_ids
     })
   } catch (error) {

@@ -459,7 +459,7 @@
 
             <!-- Initial Message for new conversations -->
             <q-input
-              v-if="actualChatType === 'direct' && selectedMembers.length === 1"
+              v-if="actualChatType === 'direct' && selectedMemberIds.length === 1"
               v-model="initialMessage"
               label="Initial Message (optional)"
               type="textarea"
@@ -472,53 +472,15 @@
               Add Members
               <span class="text-caption text-grey-6"> (Required)</span>
             </div>
-            <q-input
-              v-model="memberEmail"
-              label="Member Email(s)"
-              placeholder="Enter email(s), comma-separated"
-              @keyup.enter="addMember"
-              class="q-mb-sm"
-              :error="selectedMembers.length === 0"
-              :error-message="selectedMembers.length === 0 ? 'Please add at least one member' : ''"
-              hint="e.g., user1@test.com, user2@test.com, user3@test.com"
-            >
-              <template #append>
-                <q-btn
-                  flat
-                  icon="add"
-                  @click="addMember"
-                  :disable="!memberEmail || addingMember"
-                  :loading="addingMember"
-                  color="primary"
-                >
-                  <q-tooltip>{{ addingMember ? 'Looking up user...' : 'Add this person' }}</q-tooltip>
-                </q-btn>
-              </template>
-            </q-input>
-
-            <div v-if="selectedMembers.length > 0" class="q-mb-md">
-              <div class="text-caption text-grey-7 q-mb-xs">Members to add:</div>
-              <q-chip
-                v-for="member in selectedMembers"
-                :key="member.id"
-                removable
-                @remove="removeMember(member.id)"
-                color="primary"
-                text-color="white"
-                icon="person"
-              >
-                {{ member.name }}
-              </q-chip>
-            </div>
             
-            <div v-else class="q-mb-md">
-              <q-banner dense class="bg-blue-1 text-blue-9">
-                <template #avatar>
-                  <q-icon name="info" color="blue" />
-                </template>
-                Add members by entering their email(s) above. Use commas to add multiple at once.
-              </q-banner>
-            </div>
+            <GymMemberSelector
+              v-model="selectedMemberIds"
+              :gym-id="profile?.gym_id"
+              multiple
+              label="Select Gym Members"
+              hint="Only teens (13+) and adults can use messaging"
+              class="q-mb-md"
+            />
           </q-form>
         </q-card-section>
 
@@ -545,6 +507,7 @@ import { usePresence } from '../composables/usePresence'
 import { supabase } from '../boot/supabase'
 import { Notify } from 'quasar'
 import { user, profile, authInitialized } from '../state/auth'
+import GymMemberSelector from '../components/GymMemberSelector.vue'
 
 const router = useRouter()
 const { chats, loading, error, loadChats, createChat, markAsRead, deleteChat, deleteMultipleChats, deleteAllChats } = useChatList()
@@ -609,29 +572,27 @@ const deletingChat = ref(false)
 // Create chat dialog state
 const showCreateChat = ref(false)
 const newChatName = ref('')
-const memberEmail = ref('')
 const initialMessage = ref('')
-const selectedMembers = ref<Array<{ id: string; name: string; email: string }>>([])
+const selectedMemberIds = ref<string[]>([])
 const creating = ref(false)
-const addingMember = ref(false)
 
 // Computed properties for smart chat type detection
 const chatTypeLabel = computed(() => {
-  const count = selectedMembers.value.length
+  const count = selectedMemberIds.value.length
   if (count === 0) return 'Select members to start'
   if (count === 1) return 'Direct Message'
   return `Group Chat (${count + 1} members)`
 })
 
 const chatTypeIcon = computed(() => {
-  const count = selectedMembers.value.length
+  const count = selectedMemberIds.value.length
   if (count === 0) return 'question_mark'
   if (count === 1) return 'person'
   return 'group'
 })
 
 const actualChatType = computed(() => {
-  return selectedMembers.value.length === 1 ? 'direct' : 'group'
+  return selectedMemberIds.value.length === 1 ? 'direct' : 'group'
 })
 
 const selectChat = async (chat: Chat) => {
@@ -653,124 +614,6 @@ const formatTime = (dateString: string) => {
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}d`
 
   return date.toLocaleDateString()
-}
-
-const addMember = async () => {
-  if (!memberEmail.value.trim()) {
-    Notify.create({
-      type: 'warning',
-      message: 'Please enter an email address'
-    })
-    return
-  }
-
-  // Prevent adding if already in progress
-  if (addingMember.value) {
-    console.log('⏳ Already adding a member, please wait...')
-    return
-  }
-
-  addingMember.value = true
-
-  try {
-    // Split by comma and trim whitespace
-    const emails = memberEmail.value
-      .split(',')
-      .map(e => e.trim())
-      .filter(e => e.length > 0)
-
-    console.log('🔍 Processing emails:', emails)
-
-    let addedCount = 0
-    let skippedCount = 0
-    let notFoundCount = 0
-
-    // Process each email
-    for (const email of emails) {
-      const emailLower = email.toLowerCase()
-      
-      // Skip if already added
-      if (selectedMembers.value.some(m => m.email.toLowerCase() === emailLower)) {
-        console.log('⏭️ Skipping duplicate:', emailLower)
-        skippedCount++
-        continue
-      }
-
-      // Skip if it's the current user
-      if (profile.value?.email?.toLowerCase() === emailLower) {
-        console.log('⏭️ Skipping self:', emailLower)
-        skippedCount++
-        continue
-      }
-
-      // Look up user by email
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .eq('email', emailLower)
-        .maybeSingle()
-
-      console.log('📋 Profile lookup result for', emailLower, ':', { userData, userError })
-
-      if (userError) {
-        console.error('❌ Error looking up user:', emailLower, userError)
-        Notify.create({
-          type: 'negative',
-          message: `Error looking up ${emailLower}: ${userError.message}`
-        })
-        continue
-      }
-
-      if (userData) {
-        console.log('✅ Found user:', userData)
-        selectedMembers.value.push({
-          id: userData.id,
-          name: userData.name,
-          email: userData.email
-        })
-        addedCount++
-      } else {
-        console.log('❌ User not found:', emailLower)
-        notFoundCount++
-        Notify.create({
-          type: 'warning',
-          message: `User not found: ${emailLower}`
-        })
-      }
-    }
-
-    // Clear input
-    memberEmail.value = ''
-    
-    // Show summary notification
-    if (addedCount > 0) {
-      Notify.create({
-        type: 'positive',
-        message: `${addedCount} member(s) added successfully`,
-        timeout: 1500
-      })
-    }
-    
-    if (addedCount === 0 && notFoundCount === 0 && skippedCount > 0) {
-      Notify.create({
-        type: 'info',
-        message: 'All emails were already added',
-        timeout: 1500
-      })
-    }
-  } catch (err) {
-    console.error('❌ Exception in addMember:', err)
-    Notify.create({
-      type: 'negative',
-      message: 'Failed to add members. Please try again.'
-    })
-  } finally {
-    addingMember.value = false
-  }
-}
-
-const removeMember = (memberId: string) => {
-  selectedMembers.value = selectedMembers.value.filter(m => m.id !== memberId)
 }
 
 // Handle accepting a chat request
@@ -838,7 +681,7 @@ const handleCreateChat = async () => {
   if (!newChatName.value) return
   
   // Validation: Need at least one member
-  if (selectedMembers.value.length === 0) {
+  if (selectedMemberIds.value.length === 0) {
     Notify.create({
       type: 'warning',
       message: 'Please add at least one member'
@@ -855,20 +698,20 @@ const handleCreateChat = async () => {
     console.log('🚀 Creating chat:', {
       chatName: newChatName.value,
       detectedType,
-      memberCount: selectedMembers.value.length,
-      members: selectedMembers.value,
+      memberCount: selectedMemberIds.value.length,
+      memberIds: selectedMemberIds.value,
       currentUser: user.value?.id
     })
     
     // For direct messages with 1 member, check if we should send a request
     if (detectedType === 'direct') {
-      const otherUser = selectedMembers.value[0]
-      if (!otherUser) return
+      const otherUserId = selectedMemberIds.value[0]
+      if (!otherUserId) return
       
-      console.log('📨 Checking for existing chat history between:', user.value?.id, 'and', otherUser.id)
+      console.log('📨 Checking for existing chat history between:', user.value?.id, 'and', otherUserId)
       
       const hasHistory = user.value ? 
-        await checkExistingChatHistory(user.value.id, otherUser.id) : false
+        await checkExistingChatHistory(user.value.id, otherUserId) : false
       
       console.log('📋 Has existing chat history:', hasHistory)
       
@@ -876,7 +719,7 @@ const handleCreateChat = async () => {
         console.log('✉️ No history found - sending chat request...')
         // Send chat request for new 1:1 conversation
         const request = await createChatRequest(
-          otherUser.id,
+          otherUserId,
           newChatName.value,
           initialMessage.value || `Hello! I'd like to start a conversation with you.`
         )
@@ -902,8 +745,7 @@ const handleCreateChat = async () => {
     }
     
     // For group chats (2+ members) or existing DM history, create directly
-    const memberIds = selectedMembers.value.map(m => m.id)
-    const chat = await createChat(newChatName.value, detectedType, memberIds)
+    const chat = await createChat(newChatName.value, detectedType, selectedMemberIds.value)
 
     if (chat) {
       Notify.create({
@@ -928,8 +770,7 @@ const resetForm = () => {
   showCreateChat.value = false
   newChatName.value = ''
   initialMessage.value = ''
-  selectedMembers.value = []
-  memberEmail.value = ''
+  selectedMemberIds.value = []
 }
 
 // Toggle selection mode

@@ -197,7 +197,14 @@ export function useAttendance() {
       const { data, error: fetchError } = await supabase
         .from('class_attendance')
         .select(`
-          *,
+          id,
+          schedule_id,
+          user_id,
+          check_in_time,
+          check_in_method,
+          student_notes,
+          gym_id,
+          created_at,
           gym_schedules (
             class_type,
             day_of_week,
@@ -219,6 +226,41 @@ export function useAttendance() {
       console.error('Error getting attendance:', err)
       error.value = (err as Error).message
       throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Update student's personal notes for an attendance record
+   */
+  async function updateAttendanceNotes(
+    attendanceId: string,
+    notes: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      loading.value = true
+      error.value = null
+
+      // Validate note length
+      const maxLength = 1000
+      if (notes.length > maxLength) {
+        throw new Error(`Notes must be ${maxLength} characters or less`)
+      }
+
+      const { error: updateError } = await supabase
+        .from('class_attendance')
+        .update({ student_notes: notes || null })
+        .eq('id', attendanceId)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id) // Ensure user can only update their own notes
+
+      if (updateError) throw updateError
+
+      return { success: true }
+    } catch (err) {
+      console.error('Error updating attendance notes:', err)
+      error.value = (err as Error).message
+      return { success: false, error: (err as Error).message }
     } finally {
       loading.value = false
     }
@@ -300,6 +342,7 @@ export function useAttendance() {
     manualCheckIn,
     getClassAttendance,
     getMyAttendance,
+    updateAttendanceNotes,
     getAttendanceStats,
     getGymAttendanceReport
   }

@@ -37,22 +37,42 @@
                 v-for="schedule in schedulesByDay[day]"
                 :key="schedule.id"
                 class="class-card q-mb-sm cursor-pointer"
-                :class="`class-${schedule.class_type}`"
+                :class="[getClassStyle(schedule), { 'cancelled-class': schedule.is_cancelled }]"
                 @click="showClassDetails(schedule)"
               >
-                <div class="text-subtitle2">{{ schedule.class_type?.toUpperCase() }}</div>
-                <div class="text-caption">{{ formatTime(schedule.start_time) }} - {{ formatTime(schedule.end_time) }}</div>
+                <div class="class-header">
+                  <span class="class-emoji">{{ getClassEmoji(schedule) }}</span>
+                  <span class="text-subtitle2 class-title" :class="{ 'text-strike': schedule.is_cancelled }">
+                    {{ getClassTitle(schedule) }}
+                  </span>
+                  <q-badge v-if="schedule.is_cancelled" color="negative" label="CANCELLED" class="q-ml-xs" />
+                  <q-space />
+                  <q-btn
+                    v-if="canEdit(schedule)"
+                    icon="edit"
+                    size="xs"
+                    flat
+                    round
+                    color="primary"
+                    @click.stop="editClass(schedule)"
+                  >
+                    <q-tooltip>Edit Class</q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="text-caption class-time" :class="{ 'text-strike': schedule.is_cancelled }">
+                  {{ formatTime(schedule.start_time) }} - {{ formatTime(schedule.end_time) }}
+                </div>
                 <div class="text-caption text-grey-7">{{ schedule.instructor_name }}</div>
                 <div class="text-caption">
                   <q-icon name="place" size="xs" /> {{ schedule.gym_location }}
                 </div>
                 <q-linear-progress
-                  v-if="schedule.max_capacity"
+                  v-if="schedule.max_capacity && !schedule.is_cancelled"
                   :value="(schedule.current_rsvps || 0) / schedule.max_capacity"
                   :color="getCapacityColor(schedule)"
                   class="q-mt-xs"
                 />
-                <div v-if="schedule.max_capacity" class="text-caption text-center">
+                <div v-if="schedule.max_capacity && !schedule.is_cancelled" class="text-caption text-center">
                   {{ schedule.current_rsvps }}/{{ schedule.max_capacity }}
                 </div>
               </div>
@@ -107,12 +127,12 @@
               </q-item-section>
             </q-item>
 
-            <q-item v-if="selectedSchedule?.level">
+            <q-item>
               <q-item-section avatar>
                 <q-icon name="bar_chart" />
               </q-item-section>
               <q-item-section>
-                <q-item-label>{{ selectedSchedule?.level }}</q-item-label>
+                <q-item-label>{{ normalizeLevel(selectedSchedule?.level) }}</q-item-label>
                 <q-item-label caption>Level</q-item-label>
               </q-item-section>
             </q-item>
@@ -224,6 +244,169 @@ function getCapacityColor(schedule: any) {
   return 'positive';
 }
 
+// Fun styling functions for class cards
+function getClassStyle(schedule: any): string {
+  const notes = schedule.notes?.toLowerCase() || ''
+  const classType = schedule.class_type?.toLowerCase() || ''
+  const level = schedule.level?.toLowerCase() || ''
+  const normalizedLevel = normalizeLevel(schedule).toLowerCase()
+
+  // Competition and special classes
+  if (classType.includes('competition')) {
+    return 'class-competition'
+  }
+  if (classType.includes('open mat') || notes.includes('open mat')) {
+    return 'class-openmat'
+  }
+
+  // Age group based styles with level variations
+  if (notes.includes('pee wee') || notes.includes('pee_wee')) {
+    return 'class-peewee'
+  }
+  if (notes.includes('kid') && !notes.includes('teen')) {
+    if (level.includes('advanced')) return 'class-kids-advanced'
+    return 'class-kids'
+  }
+  if (notes.includes('teen') && !notes.includes('adult')) {
+    return 'class-teens'
+  }
+  if (notes.includes('adult')) {
+    // Use normalized level (applies business rule)
+    if (normalizedLevel.includes('fundamentals')) return 'class-adults-fundamentals'
+    if (normalizedLevel.includes('advanced')) return 'class-adults-advanced'
+    return 'class-adults'
+  }
+
+  // Class type fallback styles
+  if (classType.includes('gi') && !classType.includes('no-gi')) {
+    return 'class-gi'
+  }
+  if (classType.includes('no-gi') || classType.includes('no gi')) {
+    return 'class-nogi'
+  }
+
+  return 'class-default'
+}
+
+function getClassEmoji(schedule: any): string {
+  const notes = schedule.notes?.toLowerCase() || ''
+  const classType = schedule.class_type?.toLowerCase() || ''
+  const level = schedule.level?.toLowerCase() || ''
+  const normalizedLevel = normalizeLevel(schedule).toLowerCase()
+
+  // Competition class - special handling
+  if (classType.includes('competition')) {
+    return '🏆'
+  }
+
+  // Open mat - special handling
+  if (classType.includes('open mat') || notes.includes('open mat')) {
+    return '🤝'
+  }
+
+  // Pee Wees (always dinosaur)
+  if (notes.includes('pee wee') || notes.includes('pee_wee')) {
+    if (classType.includes('no-gi')) return '🦖' // T-Rex for no-gi
+    return '🦕' // Dinosaur for GI
+  }
+
+  // Kids - varied by class type and level
+  if (notes.includes('kid') && !notes.includes('teen')) {
+    if (level.includes('advanced')) {
+      return classType.includes('no-gi') ? '🥷' : '⭐'
+    }
+    if (classType.includes('no-gi')) return '🤸'
+    return '🧒'
+  }
+
+  // Teens - varied by class type
+  if (notes.includes('teen') && !notes.includes('adult')) {
+    if (classType.includes('no-gi')) return '🤼‍♂️'
+    return '🥋'
+  }
+
+  // Adults - varied by level and class type (use normalized level)
+  if (notes.includes('adult')) {
+    if (normalizedLevel.includes('fundamentals')) {
+      return classType.includes('no-gi') ? '💪' : '📚'
+    }
+    if (normalizedLevel.includes('advanced')) {
+      return classType.includes('no-gi') ? '⚡' : '🔥'
+    }
+    // All levels
+    if (classType.includes('no-gi')) return '🤼'
+    return '🥋'
+  }
+
+  // Fallback based on class type only
+  if (classType.includes('gi') && !classType.includes('no-gi')) {
+    return '🥋'
+  }
+  if (classType.includes('no-gi') || classType.includes('no gi')) {
+    return '🤼'
+  }
+
+  return '🏃' // Default running emoji
+}
+
+/**
+ * Normalize the level display based on business rules
+ * Business Rule: If an "adults & teens" class is NOT "all levels" or "fundamentals", 
+ * it is classified as either "advanced" or "competition"
+ */
+function normalizeLevel(schedule: any): string {
+  const level = schedule?.level
+  const notes = schedule?.notes?.toLowerCase() || ''
+  const isAdultsAndTeens = notes.includes('adult')
+  
+  if (!level) {
+    // If no level specified for adults & teens, treat as advanced
+    return isAdultsAndTeens ? 'Advanced' : 'All Levels'
+  }
+  
+  const normalized = level.toLowerCase().trim()
+  
+  // Specific level types
+  if (normalized.includes('fundamental')) return 'Fundamentals'
+  if (normalized.includes('competition')) return 'Competition'
+  if (normalized.includes('advanced')) return 'Advanced'
+  
+  // Business rule: Adults & Teens that are NOT "all levels" or "fundamentals" = Advanced
+  if (isAdultsAndTeens && !normalized.includes('all levels')) {
+    return 'Advanced'
+  }
+  
+  // Everything else is "All Levels"
+  return 'All Levels'
+}
+
+function getClassTitle(schedule: any): string {
+  const classType = schedule.class_type || ''
+  const notes = schedule.notes || ''
+  const normalizedLevel = normalizeLevel(schedule)
+
+  // Extract age group from notes
+  let ageGroup = ''
+  if (notes.toLowerCase().includes('pee wee')) {
+    ageGroup = 'Pee Wees'
+  } else if (notes.toLowerCase().includes('kid') && !notes.toLowerCase().includes('teen')) {
+    ageGroup = 'Kids'
+  } else if (notes.toLowerCase().includes('teen') && !notes.toLowerCase().includes('adult')) {
+    ageGroup = 'Teens'
+  } else if (notes.toLowerCase().includes('adult')) {
+    ageGroup = 'Adults & Teens'
+  }
+
+  // Build title
+  const parts = []
+  if (classType) parts.push(classType)
+  if (ageGroup) parts.push(ageGroup)
+  // Only show level in title if it's NOT "All Levels"
+  if (normalizedLevel !== 'All Levels') parts.push(`(${normalizedLevel})`)
+
+  return parts.join(' - ') || 'CLASS'
+}
+
 function getNextClassDate(dayOfWeek: string | undefined): string {
   if (!dayOfWeek) return '';
   const today = new Date();
@@ -241,9 +424,10 @@ function getNextClassDate(dayOfWeek: string | undefined): string {
   return dateString || '';
 }
 
-function editClass() {
-  if (selectedSchedule.value) {
-    emit('edit-schedule', selectedSchedule.value.id);
+function editClass(schedule?: any) {
+  const scheduleToEdit = schedule || selectedSchedule.value
+  if (scheduleToEdit) {
+    emit('edit-schedule', scheduleToEdit.id);
     showDetails.value = false;
   }
 }
@@ -285,24 +469,109 @@ onMounted(() => {
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.class-gi {
-  border-left-color: #2196F3;
-  background: #E3F2FD;
+.class-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
-.class-nogi {
-  border-left-color: #4CAF50;
-  background: #E8F5E9;
+.class-emoji {
+  font-size: 1.2em;
+}
+
+.class-title {
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.class-time {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.cancelled-class {
+  opacity: 0.5;
+  background: #f5f5f5 !important;
+}
+
+.text-strike {
+  text-decoration: line-through;
+}
+
+/* Fun color schemes for different class types */
+.class-peewee {
+  border-left-color: #FF5722;
+  background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+  color: #E65100;
 }
 
 .class-kids {
-  border-left-color: #FF9800;
-  background: #FFF3E0;
+  border-left-color: #2196F3;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  color: #0D47A1;
 }
 
-.class-open_mat {
+.class-kids-advanced {
+  border-left-color: #3F51B5;
+  background: linear-gradient(135deg, #E8EAF6 0%, #C5CAE9 100%);
+  color: #1A237E;
+}
+
+.class-teens {
   border-left-color: #9C27B0;
-  background: #F3E5F5;
+  background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
+  color: #4A148C;
+}
+
+.class-adults {
+  border-left-color: #4CAF50;
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  color: #1B5E20;
+}
+
+.class-adults-fundamentals {
+  border-left-color: #009688;
+  background: linear-gradient(135deg, #E0F2F1 0%, #B2DFDB 100%);
+  color: #004D40;
+}
+
+.class-adults-advanced {
+  border-left-color: #FF5722;
+  background: linear-gradient(135deg, #FBE9E7 0%, #FFCCBC 100%);
+  color: #BF360C;
+}
+
+.class-competition {
+  border-left-color: #C62828;
+  background: linear-gradient(135deg, #FFEBEE 0%, #EF9A9A 100%);
+  color: #B71C1C;
+  font-weight: 600;
+}
+
+.class-openmat {
+  border-left-color: #FFA000;
+  background: linear-gradient(135deg, #FFF8E1 0%, #FFE082 100%);
+  color: #FF6F00;
+}
+
+.class-gi {
+  border-left-color: #FF9800;
+  background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
+  color: #E65100;
+}
+
+.class-nogi {
+  border-left-color: #F44336;
+  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+  color: #B71C1C;
+}
+
+.class-default {
+  border-left-color: #607D8B;
+  background: linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%);
+  color: #37474F;
 }
 </style>
 

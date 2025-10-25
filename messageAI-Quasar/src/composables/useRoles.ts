@@ -52,6 +52,10 @@ export function useRoles() {
     isStudent.value || isParent.value
   );
 
+  const canViewClassRosters = computed(() =>
+    isOwner.value || isInstructor.value
+  );
+
   const homeRoute = computed(() => {
     switch (currentRole.value) {
       case 'owner':
@@ -81,6 +85,7 @@ export function useRoles() {
     canCreateGroupChat,
     canMessageDirectly,
     canRSVPToClasses,
+    canViewClassRosters,
     homeRoute
   };
 }

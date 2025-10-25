@@ -165,6 +165,15 @@
             <div class="text-h6 q-mb-md">Schedule Permissions</div>
             
             <q-toggle
+              v-model="settings.autoNoteOnOverfullOrUnrsvp"
+              label="Auto-create instructor note for walk-ins or full-class check-ins"
+              class="q-mb-sm"
+            />
+            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
+              When enabled, checking in without RSVP or when class is at capacity will add an instructor note automatically.
+            </div>
+
+            <q-toggle
               v-model="settings.instructorsCanCreateClasses"
               label="Instructors can create new classes"
               class="q-mb-sm"

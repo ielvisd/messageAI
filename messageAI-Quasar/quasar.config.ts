@@ -26,9 +26,7 @@ export default defineConfig((ctx) => {
       // 'eva-icons',
       // 'themify',
       // 'line-awesome',
-      // 'roboto-font-latin-ext', // this or either 'roboto-font', NEVER both!
-
-      'nunito-font', // friendly, rounded font instead of corporate Roboto
+      'roboto-font', // Use Roboto as base font
       'material-icons', // optional, you are not bound to it
     ],
 

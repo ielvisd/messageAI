@@ -1,7 +1,16 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-gutter-md">
-      <div class="text-h4">My Classes</div>
+      <div class="row items-center justify-between q-mb-md">
+        <div class="text-h4">My Classes</div>
+        <q-btn
+          color="primary"
+          label="View Class Rosters"
+          icon="people"
+          @click="$router.push('/class-roster')"
+          outline
+        />
+      </div>
 
       <!-- Tabs -->
       <q-tabs

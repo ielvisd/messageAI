@@ -1,312 +1,345 @@
 <template>
-  <q-dialog v-model="showDialog" persistent transition-show="slide-up" transition-hide="slide-down" maximized>
-    <q-card class="schedule-editor-card">
+  <q-dialog v-model="model" persistent>
+    <q-card style="min-width: 500px; max-width: 600px">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">{{ isEditing ? 'Edit' : 'Create' }} Class</div>
+        <div class="text-h6">{{ isEditing ? 'Edit Class' : 'Create Class' }}</div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pt-md">
-        <q-form ref="formRef" @submit="onSubmit" class="q-gutter-md" greedy>
+      <q-card-section>
+        <q-form @submit="onSubmit" class="q-gutter-md">
+          <!-- Day of Week -->
           <q-select
-            v-model="form.gym_location"
-            :options="locationOptions"
-            label="Location"
-            :rules="[val => !!val || 'Location is required']"
-            filled
-            lazy-rules
-          >
-            <template v-slot:prepend>
-              <q-icon name="place" />
-            </template>
-          </q-select>
-
-          <q-select
-            v-model="form.class_type"
-            :options="classTypeOptions"
-            label="Class Type"
-            :rules="[val => !!val || 'Class type is required']"
-            filled
-            lazy-rules
-          >
-            <template v-slot:prepend>
-              <q-icon name="fitness_center" />
-            </template>
-          </q-select>
-
-          <q-select
-            v-model="form.day_of_week"
-            :options="dayOptions"
+            v-model="formData.day_of_week"
+            :options="daysOfWeek"
             label="Day of Week"
+            outlined
             :rules="[val => !!val || 'Day is required']"
-            filled
-            lazy-rules
-          >
-            <template v-slot:prepend>
-              <q-icon name="calendar_today" />
-            </template>
-          </q-select>
+          />
 
-          <div class="row q-col-gutter-sm">
+          <!-- Class Type -->
+          <q-select
+            v-model="formData.class_type"
+            :options="classTypes"
+            label="Class Type"
+            outlined
+            :rules="[val => !!val || 'Class type is required']"
+          />
+
+          <!-- Time Range -->
+          <div class="row q-col-gutter-md">
             <div class="col-6">
               <q-input
-                v-model="form.start_time"
-                label="Start Time *"
+                v-model="formData.start_time"
+                label="Start Time"
                 type="time"
+                outlined
                 :rules="[val => !!val || 'Start time is required']"
-                filled
               />
             </div>
             <div class="col-6">
               <q-input
-                v-model="form.end_time"
-                label="End Time *"
+                v-model="formData.end_time"
+                label="End Time"
                 type="time"
-                :rules="[val => !!val || 'End time is required']"
-                filled
+                outlined
+                :rules="[
+                  val => !!val || 'End time is required',
+                  val => isValidTimeRange(formData.start_time, val) || 'End time must be after start time'
+                ]"
               />
             </div>
           </div>
 
+          <!-- Level -->
           <q-input
-            v-model="form.level"
-            label="Level"
-            placeholder="e.g., All Levels, Beginner, Advanced"
-            filled
+            v-model="formData.level"
+            label="Level (e.g., All Levels, Fundamentals, Advanced)"
+            outlined
+            hint="Optional - specify skill level"
           />
 
+          <!-- Notes (Age Group, etc) -->
+          <q-input
+            v-model="formData.notes"
+            label="Notes (e.g., Adult & Teens, Kids - 8-12 Yrs Old)"
+            type="textarea"
+            outlined
+            rows="3"
+            hint="Specify age groups, special requirements, etc."
+          />
+
+          <!-- Max Capacity -->
+          <q-input
+            v-model.number="formData.max_capacity"
+            label="Max Capacity"
+            type="number"
+            outlined
+            min="1"
+            hint="Optional - maximum number of students"
+          />
+
+          <!-- Instructor Selection -->
           <q-select
-            v-model="form.instructor_id"
+            v-model="formData.instructor_id"
             :options="instructorOptions"
             option-value="id"
             option-label="name"
             emit-value
             map-options
-            label="Instructor *"
-            :rules="[val => !!val || 'Instructor is required']"
-            filled
+            label="Instructor"
+            outlined
+            clearable
+            :loading="loadingInstructors"
+            hint="Optional - assign an instructor"
+          >
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  No instructors found
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+
+          <!-- Active Toggle -->
+          <q-toggle
+            v-model="formData.is_active"
+            label="Active (visible to students)"
+            color="positive"
           />
 
-          <q-input
-            v-model.number="form.max_capacity"
-            type="number"
-            label="Max Capacity"
-            hint="Leave empty for unlimited"
-            filled
-          />
-
-          <q-input
-            v-model="form.notes"
-            type="textarea"
-            label="Notes"
-            rows="3"
-            filled
-          />
+          <!-- Action Buttons -->
+          <div class="row q-gutter-sm q-mt-md">
+            <q-btn
+              label="Cancel"
+              flat
+              color="grey"
+              v-close-popup
+            />
+            <q-space />
+            <q-btn
+              :label="isEditing ? 'Save Changes' : 'Create Class'"
+              type="submit"
+              color="primary"
+              :loading="saving"
+              :disable="saving"
+            />
+          </div>
         </q-form>
       </q-card-section>
-
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="grey" @click="closeDialog" />
-        <q-btn
-          :label="isEditing ? 'Update' : 'Create'"
-          color="primary"
-          @click="submitForm"
-          :loading="loading"
-        />
-      </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
-import { useSchedule } from '../composables/useSchedule';
-import { useGym } from '../composables/useGym';
-import { supabase } from '../boot/supabase';
-import { Notify, QForm } from 'quasar';
+import { ref, computed, watch, onMounted } from 'vue'
+import { supabase } from '../boot/supabase'
+import { profile } from '../state/auth'
+import { useQuasar } from 'quasar'
+
+interface ScheduleData {
+  id?: string
+  gym_id: string
+  day_of_week: string
+  start_time: string
+  end_time: string
+  class_type: string
+  level?: string
+  notes?: string
+  max_capacity?: number
+  instructor_id?: string
+  is_active: boolean
+}
+
+interface Instructor {
+  id: string
+  name: string
+}
 
 const props = defineProps<{
-  modelValue: boolean;
-  gymId: string;
-  scheduleId?: string | null;
-}>();
+  modelValue: boolean
+  schedule?: ScheduleData | null
+  gymId: string
+}>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: boolean];
-  'saved': [];
-}>();
+  'update:modelValue': [value: boolean]
+  'saved': [schedule: ScheduleData]
+}>()
 
-const showDialog = computed({
+const $q = useQuasar()
+
+const model = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
-});
+  set: (val: boolean) => emit('update:modelValue', val)
+})
 
-const { createSchedule, updateSchedule } = useSchedule();
-const { gym, fetchGym } = useGym();
+const isEditing = computed(() => !!props.schedule?.id)
 
-const formRef = ref<QForm>();
-const loading = ref(false);
-const instructorOptions = ref<any[]>([]);
+const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const classTypes = ['GI', 'NO-GI', 'Competition', 'Open Mat', 'Private Lesson']
 
-const isEditing = computed(() => !!props.scheduleId);
-
-const form = ref({
+const formData = ref<ScheduleData>({
   gym_id: props.gymId,
-  gym_location: '',
-  class_type: '',
   day_of_week: '',
   start_time: '',
   end_time: '',
+  class_type: '',
   level: '',
-  instructor_id: '',
-  instructor_name: '',
-  max_capacity: null as number | null,
   notes: '',
+  max_capacity: undefined,
+  instructor_id: undefined,
   is_active: true
-});
+})
 
-const locationOptions = computed(() => {
-  if (!gym.value?.locations) return [];
-  return (gym.value.locations as any[]).map(l => l.name);
-});
+const saving = ref(false)
+const loadingInstructors = ref(false)
+const instructorOptions = ref<Instructor[]>([])
 
-const classTypeOptions = [
-  { label: 'Gi', value: 'gi' },
-  { label: 'No-Gi', value: 'nogi' },
-  { label: 'Kids', value: 'kids' },
-  { label: 'Open Mat', value: 'open_mat' }
-];
+// Validation
+function isValidTimeRange(start: string, end: string): boolean {
+  if (!start || !end) return true
+  return end > start
+}
 
-const dayOptions = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-];
-
+// Load instructors for the gym
 async function loadInstructors() {
   try {
+    loadingInstructors.value = true
+    
+    // Get instructors and owners for this gym
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, role')
       .eq('gym_id', props.gymId)
-      .eq('role', 'instructor');
+      .in('role', ['instructor', 'owner'])
+      .order('name')
 
-    if (error) throw error;
-    instructorOptions.value = data || [];
+    if (error) throw error
+
+    instructorOptions.value = (data || []).map(p => ({
+      id: p.id,
+      name: p.name || p.id
+    }))
   } catch (err) {
-    console.error('Error loading instructors:', err);
+    console.error('Error loading instructors:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load instructors'
+    })
+  } finally {
+    loadingInstructors.value = false
   }
 }
 
-async function loadSchedule() {
-  if (!props.scheduleId) return;
-
-  try {
-    const { data, error } = await supabase
-      .from('gym_schedules')
-      .select('*')
-      .eq('id', props.scheduleId)
-      .single();
-
-    if (error) throw error;
-
-    form.value = {
-      ...form.value,
-      ...data
-    };
-  } catch (err) {
-    console.error('Error loading schedule:', err);
+// Initialize form data when schedule changes
+watch(() => props.schedule, (schedule) => {
+  if (schedule) {
+    formData.value = {
+      id: schedule.id,
+      gym_id: schedule.gym_id || props.gymId,
+      day_of_week: schedule.day_of_week || '',
+      start_time: schedule.start_time || '',
+      end_time: schedule.end_time || '',
+      class_type: schedule.class_type || '',
+      level: schedule.level || '',
+      notes: schedule.notes || '',
+      max_capacity: schedule.max_capacity,
+      instructor_id: schedule.instructor_id,
+      is_active: schedule.is_active !== false
+    }
+  } else {
+    // Reset for new class
+    formData.value = {
+      gym_id: props.gymId,
+      day_of_week: '',
+      start_time: '',
+      end_time: '',
+      class_type: '',
+      level: '',
+      notes: '',
+      max_capacity: undefined,
+      instructor_id: undefined,
+      is_active: true
+    }
   }
-}
+}, { immediate: true })
 
-async function submitForm() {
-  const valid = await formRef.value?.validate();
-  if (!valid) return;
-
-  await onSubmit();
-}
-
+// Submit handler
 async function onSubmit() {
-  loading.value = true;
-
   try {
-    // Get instructor name
-    const instructor = instructorOptions.value.find(i => i.id === form.value.instructor_id);
-    if (instructor) {
-      form.value.instructor_name = instructor.name;
+    saving.value = true
+
+    const scheduleData = {
+      gym_id: formData.value.gym_id,
+      day_of_week: formData.value.day_of_week,
+      start_time: formData.value.start_time,
+      end_time: formData.value.end_time,
+      class_type: formData.value.class_type,
+      level: formData.value.level || null,
+      notes: formData.value.notes || null,
+      max_capacity: formData.value.max_capacity || null,
+      instructor_id: formData.value.instructor_id || null,
+      is_active: formData.value.is_active,
+      updated_at: new Date().toISOString()
     }
 
-    if (isEditing.value && props.scheduleId) {
-      const { error } = await updateSchedule(props.scheduleId, form.value);
-      if (error) throw error;
+    if (isEditing.value && formData.value.id) {
+      // Update existing schedule
+      const { data, error } = await supabase
+        .from('gym_schedules')
+        .update(scheduleData)
+        .eq('id', formData.value.id)
+        .select()
+        .single()
 
-      Notify.create({
+      if (error) throw error
+
+      $q.notify({
         type: 'positive',
         message: 'Class updated successfully'
-      });
-    } else {
-      const { error } = await createSchedule(form.value);
-      if (error) throw error;
+      })
 
-      Notify.create({
+      emit('saved', data)
+    } else {
+      // Create new schedule
+      const { data, error } = await supabase
+        .from('gym_schedules')
+        .insert(scheduleData)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      $q.notify({
         type: 'positive',
         message: 'Class created successfully'
-      });
+      })
+
+      emit('saved', data)
     }
 
-    emit('saved');
-    closeDialog();
+    model.value = false
   } catch (err) {
-    console.error('Error saving schedule:', err);
-    Notify.create({
+    console.error('Error saving schedule:', err)
+    $q.notify({
       type: 'negative',
-      message: (err as Error).message || 'Failed to save class'
-    });
+      message: `Failed to ${isEditing.value ? 'update' : 'create'} class`
+    })
   } finally {
-    loading.value = false;
+    saving.value = false
   }
 }
-
-function resetForm() {
-  form.value = {
-    gym_id: props.gymId,
-    gym_location: '',
-    class_type: '',
-    day_of_week: '',
-    start_time: '',
-    end_time: '',
-    level: '',
-    instructor_id: '',
-    instructor_name: '',
-    max_capacity: null,
-    notes: '',
-    is_active: true
-  };
-}
-
-function closeDialog() {
-  resetForm();
-  showDialog.value = false;
-}
-
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    void loadInstructors();
-    if (props.scheduleId) {
-      void loadSchedule();
-    } else {
-      resetForm();
-    }
-  }
-});
 
 onMounted(() => {
-  if (props.gymId) {
-    void fetchGym(props.gymId);
-    void loadInstructors();
-  }
-  if (props.scheduleId) {
-    void loadSchedule();
-  }
-});
+  void loadInstructors()
+})
 </script>
 
+<style scoped>
+.q-field {
+  margin-bottom: 0;
+}
+</style>

@@ -94,6 +94,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '../boot/supabase';
+import { useChatRequests } from '../composables/useChatRequests';
+import { user } from '../state/auth';
+import { Notify } from 'quasar';
 
 const props = defineProps<{
   gymId: string;
@@ -104,6 +107,9 @@ defineEmits<{
 }>();
 
 const router = useRouter();
+
+// Chat requests composable
+const { createChatRequest, checkExistingChatHistory } = useChatRequests();
 
 const members = ref<any[]>([]);
 const loading = ref(false);
@@ -122,6 +128,7 @@ async function loadMembers() {
       .from('profiles')
       .select('*')
       .eq('gym_id', props.gymId)
+      .in('age_category', ['teen', 'adult']) // Only show teens and adults
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -152,10 +159,56 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-function startChat(member: { id: string; name: string }) {
-  // Navigate to chat or create new chat with this member
-  // This will be implemented with useChatRequests
-  void router.push(`/chats?user=${member.id}`);
+async function startChat(member: { id: string; name: string }) {
+  if (!user.value) {
+    Notify.create({
+      type: 'negative',
+      message: 'You must be logged in to send messages'
+    });
+    return;
+  }
+
+  try {
+    // Check if there's existing chat history
+    const hasHistory = await checkExistingChatHistory(user.value.id, member.id);
+    
+    if (hasHistory) {
+      // Navigate to the existing chat
+      // The chat list will handle finding the correct chat
+      await router.push('/chats');
+      Notify.create({
+        type: 'info',
+        message: `Opening chat with ${member.name}`
+      });
+    } else {
+      // Create a new chat request
+      const request = await createChatRequest(
+        member.id,
+        `Chat with ${member.name}`,
+        `Hello ${member.name}! I'd like to start a conversation with you.`
+      );
+      
+      if (request) {
+        Notify.create({
+          type: 'positive',
+          message: `Chat request sent to ${member.name}!`
+        });
+        // Navigate to requests tab
+        await router.push('/chats');
+      } else {
+        Notify.create({
+          type: 'negative',
+          message: 'Failed to send chat request'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error starting chat:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to start chat'
+    });
+  }
 }
 
 function viewSchedule(member: { id: string; name: string }) {

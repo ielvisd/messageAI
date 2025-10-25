@@ -17,6 +17,10 @@ interface Schedule {
   max_capacity?: number
   recurring: boolean
   current_rsvps?: number
+  is_cancelled?: boolean
+  level?: string
+  notes?: string
+  is_active?: boolean
 }
 
 export function useSchedule() {
@@ -36,8 +40,9 @@ export function useSchedule() {
     }
     
     schedules.value.forEach(schedule => {
-      if (schedule?.day_of_week && byDay[schedule.day_of_week]) {
-        byDay[schedule.day_of_week].push(schedule)
+      const day = schedule?.day_of_week
+      if (day && day in byDay) {
+        byDay[day]?.push(schedule)
       }
     })
     
@@ -147,6 +152,62 @@ export function useSchedule() {
     }
   }
 
+  async function cancelSchedule(id: string) {
+    try {
+      loading.value = true
+      error.value = null
+
+      const { data, error: cancelError } = await supabase
+        .from('gym_schedules')
+        .update({ is_cancelled: true, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (cancelError) throw cancelError
+
+      const index = schedules.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        schedules.value[index] = data
+      }
+      return data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to cancel schedule'
+      console.error('Error cancelling schedule:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function uncancelSchedule(id: string) {
+    try {
+      loading.value = true
+      error.value = null
+
+      const { data, error: uncancelError } = await supabase
+        .from('gym_schedules')
+        .update({ is_cancelled: false, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (uncancelError) throw uncancelError
+
+      const index = schedules.value.findIndex(s => s.id === id)
+      if (index !== -1) {
+        schedules.value[index] = data
+      }
+      return data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to restore schedule'
+      console.error('Error restoring schedule:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     schedules: computed(() => schedules.value),
     schedulesByDay,
@@ -155,6 +216,8 @@ export function useSchedule() {
     fetchSchedules,
     createSchedule,
     updateSchedule,
-    deleteSchedule
+    deleteSchedule,
+    cancelSchedule,
+    uncancelSchedule
   }
 }

@@ -34,10 +34,16 @@ export function useBeltProgression() {
         .from('profiles')
         .select('current_belt, current_stripes')
         .eq('id', userId)
-        .single()
+        .maybeSingle()  // Use maybeSingle() instead of single() to handle no rows
 
-      if (fetchError) throw fetchError
-      if (!data) throw new Error('User not found')
+      // If no data or error, return default white belt
+      if (fetchError || !data) {
+        console.warn('No belt data found, defaulting to white belt:', fetchError)
+        return {
+          beltColor: 'white',
+          stripes: 0
+        }
+      }
 
       return {
         beltColor: (data.current_belt || 'white') as BeltColor,
@@ -46,7 +52,11 @@ export function useBeltProgression() {
     } catch (err) {
       console.error('Error getting current belt:', err)
       error.value = (err as Error).message
-      throw err
+      // Return default instead of throwing
+      return {
+        beltColor: 'white',
+        stripes: 0
+      }
     } finally {
       loading.value = false
     }
@@ -214,7 +224,7 @@ export function useBeltProgression() {
         .eq('user_id', userId)
         .order('awarded_date', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()  // Use maybeSingle() to handle no rows
 
       if (fetchError || !data) {
         // No promotion history, assume white belt from account creation
@@ -222,7 +232,7 @@ export function useBeltProgression() {
           .from('profiles')
           .select('created_at')
           .eq('id', userId)
-          .single()
+          .maybeSingle()  // Use maybeSingle() here too
 
         if (profile) {
           const createdDate = new Date(profile.created_at)

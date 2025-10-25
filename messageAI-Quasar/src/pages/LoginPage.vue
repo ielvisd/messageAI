@@ -141,13 +141,28 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { signIn } from '../state/auth'
+import { signIn, profile } from '../state/auth'
 import { Notify, LocalStorage } from 'quasar'
 
 const router = useRouter()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+
+// Helper function to get role-based redirect
+function getRoleBasedRedirect(userRole?: string | null): string {
+  switch (userRole) {
+    case 'owner':
+      return '/dashboard'
+    case 'instructor':
+      return '/instructor-dashboard'
+    case 'parent':
+      return '/parent-dashboard'
+    case 'student':
+    default:
+      return '/chats'
+  }
+}
 
 // Demo Accounts
 interface DemoAccount {
@@ -159,6 +174,37 @@ interface DemoAccount {
 }
 
 const demoAccounts: DemoAccount[] = [
+  // Owner
+  {
+    email: 'owner@jiujitsio.com',
+    name: 'John Silva',
+    description: '🏢 Gym Owner - Full admin access',
+    label: '🏢 John Silva - Owner',
+    icon: 'admin_panel_settings'
+  },
+  // Instructors
+  {
+    email: 'carlos.martinez@jiujitsio.com',
+    name: 'Professor Carlos Martinez',
+    description: '🥋 Instructor - Competition & Advanced',
+    label: '🥋 Prof. Carlos - Instructor',
+    icon: 'sports_martial_arts'
+  },
+  {
+    email: 'ana.rodriguez@jiujitsio.com',
+    name: 'Coach Ana Rodriguez',
+    description: '🥋 Instructor - Kids & Fundamentals',
+    label: '🥋 Coach Ana - Instructor',
+    icon: 'sports_martial_arts'
+  },
+  {
+    email: 'mike.chen@jiujitsio.com',
+    name: 'Professor Mike Chen',
+    description: '🥋 Instructor - No-GI & MMA',
+    label: '🥋 Prof. Mike - Instructor',
+    icon: 'sports_martial_arts'
+  },
+  // Students
   {
     email: 'alex.student@demo.com',
     name: 'Alex Chen',
@@ -261,10 +307,14 @@ See CREATE_DEMO_ACCOUNTS_PROPERLY.md for details.
       // Wait a tick for Vue reactivity to propagate
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      console.log('🔄 Attempting redirect to /chats (student role)...')
+      // Get role-based redirect
+      const userRole = profile.value?.role
+      const redirectPath = getRoleBasedRedirect(userRole)
       
-      // Redirect directly to chats for students
-      await router.push('/chats')
+      console.log(`🔄 Redirecting ${userRole || 'user'} to ${redirectPath}...`)
+      
+      // Redirect based on user role
+      await router.push(redirectPath)
       console.log('✅ Redirect complete')
     }
   } catch (err) {
@@ -343,9 +393,12 @@ const onSubmit = async () => {
         console.log('📱 Redirecting to complete gym join:', pendingJoinToken)
         await router.push(`/join/${pendingJoinToken}`)
       } else {
-        console.log('🔄 Attempting redirect to /chats after manual login...')
-        // Redirect directly to chats
-        await router.push('/chats')
+        // Get role-based redirect
+        const userRole = profile.value?.role
+        const redirectPath = getRoleBasedRedirect(userRole)
+        
+        console.log(`🔄 Redirecting ${userRole || 'user'} to ${redirectPath} after manual login...`)
+        await router.push(redirectPath)
         console.log('✅ Redirect complete')
       }
     }

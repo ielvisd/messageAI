@@ -168,9 +168,13 @@ async function handleQRCodeDetected(qrData: string) {
     checkInDetails.value = result
     checkedIn.value = true
 
+    const extras: string[] = []
+    if (result && (result as any).had_rsvp === false) extras.push('no RSVP')
+    if (result && (result as any).was_full_at_checkin === true) extras.push('class full')
+    const suffix = extras.length ? ` (${extras.join(', ')})` : ''
     Notify.create({
       type: 'positive',
-      message: `Checked in to ${result.classType}!`,
+      message: `Checked in to ${result.classType}!${suffix}`,
       position: 'top'
     })
   } catch (err) {

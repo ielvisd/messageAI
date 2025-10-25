@@ -109,12 +109,14 @@
           </q-item-section>
         </q-item>
 
-        <q-item v-if="userRole === 'student'" clickable @click="navigate('/student/dashboard')">
+        <!-- Training Dashboard (all roles) -->
+        <q-item clickable @click="navigate('/student/dashboard')">
           <q-item-section avatar>
-            <q-icon name="analytics" />
+            <q-icon name="insights" />
           </q-item-section>
           <q-item-section>
-            <q-item-label>My Dashboard</q-item-label>
+            <q-item-label>Training Stats</q-item-label>
+            <q-item-label caption>My attendance & progress</q-item-label>
           </q-item-section>
         </q-item>
 

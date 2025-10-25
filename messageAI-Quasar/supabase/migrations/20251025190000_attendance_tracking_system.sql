@@ -15,16 +15,17 @@ CREATE TABLE IF NOT EXISTS public.class_attendance (
   check_in_method TEXT NOT NULL CHECK (check_in_method IN ('qr_code', 'manual')),
   marked_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- For manual check-ins
   gym_id UUID NOT NULL REFERENCES public.gyms(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Prevent duplicate check-ins for same user/class/day
-  UNIQUE(user_id, schedule_id, DATE(check_in_time))
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_class_attendance_user_time ON public.class_attendance(user_id, check_in_time DESC);
-CREATE INDEX idx_class_attendance_schedule_date ON public.class_attendance(schedule_id, DATE(check_in_time));
-CREATE INDEX idx_class_attendance_gym ON public.class_attendance(gym_id);
-CREATE INDEX idx_class_attendance_method ON public.class_attendance(check_in_method);
+-- Add unique constraint using expression index for date part
+CREATE UNIQUE INDEX IF NOT EXISTS idx_class_attendance_unique_daily 
+  ON public.class_attendance(user_id, schedule_id, (check_in_time::date));
+
+CREATE INDEX IF NOT EXISTS idx_class_attendance_user_time ON public.class_attendance(user_id, check_in_time DESC);
+CREATE INDEX IF NOT EXISTS idx_class_attendance_schedule_date ON public.class_attendance(schedule_id, (check_in_time::date));
+CREATE INDEX IF NOT EXISTS idx_class_attendance_gym ON public.class_attendance(gym_id);
+CREATE INDEX IF NOT EXISTS idx_class_attendance_method ON public.class_attendance(check_in_method);
 
 COMMENT ON TABLE public.class_attendance IS 'Tracks student check-ins to classes via QR or manual marking';
 COMMENT ON COLUMN public.class_attendance.check_in_method IS 'How student checked in: qr_code (scanned) or manual (marked by instructor)';

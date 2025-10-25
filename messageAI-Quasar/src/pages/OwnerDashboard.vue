@@ -4,15 +4,24 @@
       <!-- Header -->
       <div class="row items-center justify-between">
         <div class="text-h4">{{ gym?.name || 'Dashboard' }}</div>
-        <q-btn
-          icon="settings"
-          flat
-          round
-          @click="$router.push('/settings')"
-          v-if="isOwner"
-        >
-          <q-tooltip>Gym Settings</q-tooltip>
-        </q-btn>
+        <div class="row q-gutter-sm">
+          <q-btn
+            color="primary"
+            label="Class Rosters"
+            icon="people"
+            @click="$router.push('/class-roster')"
+            outline
+          />
+          <q-btn
+            icon="settings"
+            flat
+            round
+            @click="$router.push('/settings')"
+            v-if="isOwner"
+          >
+            <q-tooltip>Gym Settings</q-tooltip>
+          </q-btn>
+        </div>
       </div>
 
       <!-- Tabs -->
