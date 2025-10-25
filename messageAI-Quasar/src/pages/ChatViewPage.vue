@@ -90,138 +90,183 @@
     </div>
 
     <!-- Chat Messages -->
-    <div v-else class="col column">
+    <div v-else class="col column" style="background: #f0f2f5;">
       <div v-if="messages.length > 0" class="col q-pa-md" style="overflow-y: auto;">
         <div
           v-for="(message, index) in formattedMessages"
           :key="index"
           class="q-mb-md"
-          :class="{ 'row justify-end': message.sent, 'row justify-start': !message.sent }"
         >
-          <!-- Media Message -->
-          <div v-if="message.messageType === 'image' || message.messageType === 'video'" 
-               :class="{ 'sent-media': message.sent }">
-            <MediaMessage
-              :message-type="message.messageType"
-              :media-url="message.mediaUrl!"
-              :caption="message.text"
-              :thumbnail-url="message.thumbnailUrl"
-              :duration="message.duration"
-              :is-sent="message.sent"
-            />
-            <div
-              class="text-caption q-mt-xs"
-              :class="message.sent ? 'text-right text-blue-1' : 'text-grey-6'"
-            >
-              {{ message.timestamp }}
-              
-              <!-- Read Receipt Icons (for sent messages) -->
-              <template v-if="message.sent">
-                <!-- Queued/sending -->
-                <q-icon 
-                  v-if="message.status === 'sending'" 
-                  name="schedule" 
-                  size="14px" 
-                  class="q-ml-xs"
-                >
-                  <q-tooltip>Queued - will send when online</q-tooltip>
-                </q-icon>
-                
-                <!-- Single checkmark: sent -->
-                <q-icon 
-                  v-else-if="message.readCount === 0"
-                  name="done" 
-                  size="14px" 
-                  class="q-ml-xs"
+          <!-- Sent messages (right aligned) -->
+          <div v-if="message.sent" class="row justify-end">
+            <div style="max-width: 75%;">
+              <!-- Media Message -->
+              <div v-if="message.messageType === 'image' || message.messageType === 'video'">
+                <MediaMessage
+                  :message-type="message.messageType"
+                  :media-url="message.mediaUrl!"
+                  :caption="message.text"
+                  :thumbnail-url="message.thumbnailUrl"
+                  :duration="message.duration"
+                  :is-sent="message.sent"
                 />
+                <div class="text-caption q-mt-xs text-right text-blue-1">
+                  {{ message.timestamp }}
+                  
+                  <!-- Read Receipt Icons -->
+                  <template v-if="message.sent">
+                    <q-icon 
+                      v-if="message.status === 'sending'" 
+                      name="schedule" 
+                      size="14px" 
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip>Queued - will send when online</q-tooltip>
+                    </q-icon>
+                    
+                    <q-icon 
+                      v-else-if="message.readCount === 0"
+                      name="done" 
+                      size="14px" 
+                      class="q-ml-xs"
+                    />
+                    
+                    <q-icon 
+                      v-else
+                      name="done_all" 
+                      size="14px" 
+                      color="blue" 
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
+                        Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
+                      </q-tooltip>
+                      <q-tooltip v-else>
+                        Read
+                      </q-tooltip>
+                    </q-icon>
+                  </template>
+                </div>
                 
-                <!-- Blue double checkmark: read -->
-                <q-icon 
-                  v-else
-                  name="done_all" 
-                  size="14px" 
-                  color="blue" 
-                  class="q-ml-xs"
+                <MessageReactions 
+                  v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+                  :message-id="message.id"
+                />
+              </div>
+              
+              <!-- Text Message -->
+              <div v-else>
+                <div
+                  class="message-bubble"
+                  :class="{
+                    'bg-primary text-white': message.status === 'sent',
+                    'bg-blue-2 text-primary': message.status === 'sending'
+                  }"
+                  style="border-radius: 18px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                 >
-                  <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
-                    Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
-                  </q-tooltip>
-                  <q-tooltip v-else>
-                    Read
-                  </q-tooltip>
-                </q-icon>
-              </template>
-            </div>
-            
-            <!-- Reactions for Media Messages -->
-            <MessageReactions 
-              v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
-              :message-id="message.id"
-            />
-          </div>
-          
-          <!-- Text Message -->
-          <div v-else class="text-message-container">
-            <div
-              class="message-bubble"
-              :class="{
-                'bg-primary text-white': message.sent && message.status === 'sent',
-                'bg-blue-2 text-primary': message.sent && message.status === 'sending',
-                'bg-grey-3 text-black': !message.sent
-              }"
-              style="max-width: 70%; border-radius: 18px; padding: 12px 16px;"
-            >
-              <div class="text-body2">{{ message.text }}</div>
-              <div
-                class="text-caption q-mt-xs"
-                :class="message.sent ? (message.status === 'sending' ? 'text-primary' : 'text-blue-1') : 'text-grey-6'"
-              >
-                {{ message.timestamp }}
+                  <div class="text-body1">{{ message.text }}</div>
+                  <div
+                    class="text-caption q-mt-xs"
+                    :class="message.status === 'sending' ? 'text-primary' : 'text-blue-1'"
+                  >
+                    {{ message.timestamp }}
+                    
+                    <!-- Read Receipt Icons -->
+                    <q-icon 
+                      v-if="message.status === 'sending'" 
+                      name="schedule" 
+                      size="14px" 
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip>Queued - will send when online</q-tooltip>
+                    </q-icon>
+                    
+                    <q-icon 
+                      v-else-if="message.readCount === 0"
+                      name="done" 
+                      size="14px" 
+                      class="q-ml-xs"
+                    />
+                    
+                    <q-icon 
+                      v-else
+                      name="done_all" 
+                      size="14px" 
+                      color="blue" 
+                      class="q-ml-xs"
+                    >
+                      <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
+                        Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
+                      </q-tooltip>
+                      <q-tooltip v-else>
+                        Read
+                      </q-tooltip>
+                    </q-icon>
+                  </div>
+                </div>
                 
-                <!-- Read Receipt Icons (for sent messages) -->
-                <template v-if="message.sent">
-                  <!-- Queued/sending -->
-                  <q-icon 
-                    v-if="message.status === 'sending'" 
-                    name="schedule" 
-                    size="14px" 
-                    class="q-ml-xs"
-                  >
-                    <q-tooltip>Queued - will send when online</q-tooltip>
-                  </q-icon>
-                  
-                  <!-- Single checkmark: sent -->
-                  <q-icon 
-                    v-else-if="message.readCount === 0"
-                    name="done" 
-                    size="14px" 
-                    class="q-ml-xs"
-                  />
-                  
-                  <!-- Blue double checkmark: read -->
-                  <q-icon 
-                    v-else
-                    name="done_all" 
-                    size="14px" 
-                    color="blue" 
-                    class="q-ml-xs"
-                  >
-                    <q-tooltip v-if="chatInfo?.type === 'group' && message.readCount > 0">
-                      Read by {{ message.readCount }}<br/>{{ message.readBy.join(', ') }}
-                    </q-tooltip>
-                    <q-tooltip v-else>
-                      Read
-                    </q-tooltip>
-                  </q-icon>
-                </template>
+                <MessageReactions 
+                  v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+                  :message-id="message.id"
+                  class="q-mt-xs"
+                />
               </div>
             </div>
+          </div>
+          
+          <!-- Received messages (left aligned with avatar and name) -->
+          <div v-else class="row justify-start items-start q-gutter-sm">
+            <!-- Avatar -->
+            <q-avatar size="40px" color="secondary" text-color="white">
+              <img v-if="message.avatar" :src="message.avatar" />
+              <span v-else class="text-subtitle2">{{ (message.name || 'U')[0].toUpperCase() }}</span>
+            </q-avatar>
             
-            <!-- Reactions for Text Messages -->
-            <MessageReactions 
-              v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
-              :message-id="message.id"
-            />
+            <div style="max-width: calc(75% - 48px);">
+              <!-- Sender Name (show in group chats) -->
+              <div v-if="chatInfo?.type === 'group'" class="text-caption text-grey-7 q-mb-xs q-ml-sm">
+                {{ message.name || 'Unknown' }}
+              </div>
+              
+              <!-- Media Message -->
+              <div v-if="message.messageType === 'image' || message.messageType === 'video'">
+                <MediaMessage
+                  :message-type="message.messageType"
+                  :media-url="message.mediaUrl!"
+                  :caption="message.text"
+                  :thumbnail-url="message.thumbnailUrl"
+                  :duration="message.duration"
+                  :is-sent="message.sent"
+                />
+                <div class="text-caption q-mt-xs text-grey-6 q-ml-sm">
+                  {{ message.timestamp }}
+                </div>
+                
+                <MessageReactions 
+                  v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+                  :message-id="message.id"
+                />
+              </div>
+              
+              <!-- Text Message -->
+              <div v-else>
+                <div
+                  class="message-bubble bg-grey-2 text-black"
+                  style="border-radius: 18px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                >
+                  <div class="text-body1">{{ message.text }}</div>
+                  <div class="text-caption q-mt-xs text-grey-6">
+                    {{ message.timestamp }}
+                  </div>
+                </div>
+                
+                <MessageReactions 
+                  v-if="message.id && !message.id.startsWith('temp_') && !message.id.startsWith('queued_')"
+                  :message-id="message.id"
+                  class="q-mt-xs"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -522,6 +567,18 @@ watch(messages, () => {
 .message-bubble {
   word-wrap: break-word;
   word-break: break-word;
+  position: relative;
+}
+
+/* Improved message bubble for received messages */
+.bg-grey-2 {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e6eb;
+}
+
+/* Sent message bubble styling */
+.bg-primary {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .sent-media {

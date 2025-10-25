@@ -52,7 +52,10 @@ async function fetchUserGyms(): Promise<Gym[]> {
     }
 
     // Get gym_ids array from profile (multi-gym membership)
-    const gymIds = (profile.value as any).gym_ids || []
+    const rawGymIds = (profile.value as any).gym_ids || []
+    
+    // Filter out any null or undefined values
+    const gymIds = rawGymIds.filter((id: any) => id != null)
     
     console.log('🏋️ fetchUserGyms - profile.gym_ids:', gymIds)
     console.log('🏋️ fetchUserGyms - profile.gym_id:', profile.value.gym_id)

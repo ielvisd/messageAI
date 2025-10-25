@@ -497,29 +497,72 @@ export function useChat(chatId: string) {
             table: 'messages',
             filter: `chat_id=eq.${chatId}`
           },
-          (payload) => {
+          async (payload) => {
+            console.log('📨 Real-time message event:', payload.eventType, payload)
+            
             if (payload.eventType === 'INSERT') {
               const newMessage = payload.new as any
-              const message: Message = {
-                id: newMessage.id,
-                chat_id: newMessage.chat_id,
-                sender_id: newMessage.sender_id,
-                content: newMessage.content,
-                message_type: newMessage.message_type as 'text' | 'image' | 'file',
-                media_url: newMessage.media_url || undefined,
-                status: newMessage.status as 'sending' | 'sent' | 'delivered' | 'read',
-                read_at: newMessage.read_at || undefined,
-                created_at: newMessage.created_at,
-                updated_at: newMessage.updated_at,
-                sender_name: 'Unknown', // Will be updated when we load the full message
-                sender_avatar: undefined,
-                read_receipts: []
+              
+              // Skip if this is our own message (already added optimistically)
+              if (newMessage.sender_id === user.value?.id) {
+                console.log('⏭️ Skipping own message (already added optimistically)')
+                return
               }
 
               // Only add if not already present (avoid duplicates)
-              if (!messages.value.find(m => m.id === message.id)) {
-                messages.value.push(message)
+              if (messages.value.find(m => m.id === newMessage.id)) {
+                console.log('⏭️ Message already exists, skipping')
+                return
               }
+
+              // Fetch the full message with sender profile
+              const { data: fullMessage, error: fetchError } = await supabase
+                .from('messages')
+                .select(`
+                  id,
+                  chat_id,
+                  sender_id,
+                  content,
+                  message_type,
+                  media_url,
+                  status,
+                  read_at,
+                  created_at,
+                  updated_at,
+                  profiles!inner (
+                    name,
+                    avatar_url
+                  )
+                `)
+                .eq('id', newMessage.id)
+                .single()
+
+              if (fetchError) {
+                console.error('❌ Error fetching full message:', fetchError)
+                return
+              }
+
+              const message: Message = {
+                id: fullMessage.id,
+                chat_id: fullMessage.chat_id,
+                sender_id: fullMessage.sender_id,
+                content: fullMessage.content,
+                message_type: fullMessage.message_type as 'text' | 'image' | 'file',
+                media_url: fullMessage.media_url || undefined,
+                status: fullMessage.status as 'sending' | 'sent' | 'delivered' | 'read',
+                read_at: fullMessage.read_at || undefined,
+                created_at: fullMessage.created_at,
+                updated_at: fullMessage.updated_at,
+                sender_name: (fullMessage.profiles as any)?.name || 'Unknown',
+                sender_avatar: (fullMessage.profiles as any)?.avatar_url || undefined,
+                read_receipts: []
+              }
+
+              messages.value.push(message)
+              console.log('✅ New message added from:', message.sender_name)
+              
+              // Mark as read if we're the recipient
+              void markAsRead()
             } else if (payload.eventType === 'UPDATE') {
               const updatedMessage = payload.new as any
               const messageIndex = messages.value.findIndex(m => m.id === updatedMessage.id)
@@ -527,6 +570,7 @@ export function useChat(chatId: string) {
                 messages.value[messageIndex].status = updatedMessage.status as 'sending' | 'sent' | 'delivered' | 'read'
                 messages.value[messageIndex].read_at = updatedMessage.read_at
                 messages.value[messageIndex].updated_at = updatedMessage.updated_at
+                console.log('📝 Message updated:', updatedMessage.id)
               }
             }
           }

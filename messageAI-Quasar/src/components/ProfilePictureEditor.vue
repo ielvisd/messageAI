@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
 import { Notify } from 'quasar'
@@ -94,9 +95,15 @@ watch(() => props.avatarUrl, (val) => {
 })
 
 /**
- * Check camera permissions
+ * Check camera permissions (only needed on native platforms)
  */
 const checkPermissions = async (): Promise<boolean> => {
+  // On web, permissions are handled automatically by the browser
+  if (Capacitor.getPlatform() === 'web') {
+    return true
+  }
+
+  // On native platforms (iOS/Android), check and request permissions
   try {
     const permissions = await Camera.checkPermissions()
     if (permissions.camera === 'granted' && permissions.photos === 'granted') {

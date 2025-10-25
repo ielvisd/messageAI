@@ -209,6 +209,13 @@ async function loadInstructors() {
   try {
     loadingInstructors.value = true
     
+    // Don't query if gym_id is not valid
+    if (!props.gymId || props.gymId === '' || props.gymId === 'null') {
+      console.warn('⚠️ Cannot load instructors: invalid gym_id', props.gymId)
+      instructorOptions.value = []
+      return
+    }
+    
     // Get instructors and owners for this gym
     const { data, error } = await supabase
       .from('profiles')

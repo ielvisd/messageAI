@@ -5,6 +5,9 @@ DO $$
 DECLARE
   v_jiujitsio_gym_id uuid;
   v_jiujitsio_chat_id uuid;
+  v_jiujitsio_west_gym_id uuid;
+  v_jiujitsio_west_chat_id uuid;
+  v_both_gym_ids uuid[];
   v_owner_id uuid;
   v_carlos_id uuid;
   v_ana_id uuid;
@@ -12,17 +15,31 @@ DECLARE
 BEGIN
   RAISE NOTICE '🔧 Updating demo profiles...';
   
-  -- Get Jiujitsio gym and chat IDs
+  -- Get Jiujitsio gym and chat IDs (lowercase!)
   SELECT id, gym_chat_id INTO v_jiujitsio_gym_id, v_jiujitsio_chat_id
   FROM gyms 
-  WHERE name = 'Jiujitsio' 
+  WHERE name = 'jiujitsio' 
+  LIMIT 1;
+  
+  -- Get Jiujitsio West gym and chat IDs
+  SELECT id, gym_chat_id INTO v_jiujitsio_west_gym_id, v_jiujitsio_west_chat_id
+  FROM gyms 
+  WHERE name = 'Jiujitsio West' 
   LIMIT 1;
   
   IF v_jiujitsio_gym_id IS NULL THEN
-    RAISE EXCEPTION 'Jiujitsio gym not found!';
+    RAISE EXCEPTION 'jiujitsio gym not found!';
   END IF;
   
   RAISE NOTICE '✅ Found Jiujitsio gym: %', v_jiujitsio_gym_id;
+  
+  IF v_jiujitsio_west_gym_id IS NOT NULL THEN
+    RAISE NOTICE '✅ Found Jiujitsio West gym: %', v_jiujitsio_west_gym_id;
+    v_both_gym_ids := ARRAY[v_jiujitsio_gym_id, v_jiujitsio_west_gym_id];
+  ELSE
+    RAISE NOTICE '⚠️  Jiujitsio West gym not found - will only add to Jiujitsio';
+    v_both_gym_ids := ARRAY[v_jiujitsio_gym_id];
+  END IF;
   
   -- Get user IDs
   SELECT id INTO v_owner_id FROM profiles WHERE email = 'owner@jiujitsio.com';
@@ -37,23 +54,30 @@ BEGIN
       name = 'John Silva',
       role = 'owner',
       gym_id = v_jiujitsio_gym_id,
-      gym_ids = ARRAY[v_jiujitsio_gym_id],
-      owned_gym_ids = ARRAY[v_jiujitsio_gym_id],
+      gym_ids = v_both_gym_ids,
+      owned_gym_ids = v_both_gym_ids,
       birthdate = '1975-03-15',
       age_category = 'adult'
     WHERE id = v_owner_id;
     
-    -- Update gym owner_id
+    -- Update both gyms' owner_id
     UPDATE gyms 
     SET owner_id = v_owner_id 
-    WHERE id = v_jiujitsio_gym_id;
+    WHERE id = ANY(v_both_gym_ids);
     
-    -- Add to gym chat
+    -- Add to Jiujitsio gym chat
     INSERT INTO chat_members (chat_id, user_id, joined_at)
     VALUES (v_jiujitsio_chat_id, v_owner_id, NOW())
     ON CONFLICT (chat_id, user_id) DO NOTHING;
     
-    RAISE NOTICE '✅ Updated Owner: John Silva';
+    -- Add to Jiujitsio West gym chat (if exists)
+    IF v_jiujitsio_west_chat_id IS NOT NULL THEN
+      INSERT INTO chat_members (chat_id, user_id, joined_at)
+      VALUES (v_jiujitsio_west_chat_id, v_owner_id, NOW())
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    END IF;
+    
+    RAISE NOTICE '✅ Updated Owner: John Silva (owns both gyms)';
   ELSE
     RAISE NOTICE '⚠️  Owner account not found. Create owner@jiujitsio.com in Dashboard first.';
   END IF;
@@ -65,7 +89,7 @@ BEGIN
       name = 'Professor Carlos Martinez',
       role = 'instructor',
       gym_id = v_jiujitsio_gym_id,
-      gym_ids = ARRAY[v_jiujitsio_gym_id],
+      gym_ids = v_both_gym_ids,
       birthdate = '1985-07-22',
       age_category = 'adult',
       instructor_preferences = jsonb_build_object(
@@ -80,12 +104,18 @@ BEGIN
       private_lessons_enabled = true
     WHERE id = v_carlos_id;
     
-    -- Add to gym chat
+    -- Add to both gym chats
     INSERT INTO chat_members (chat_id, user_id, joined_at)
     VALUES (v_jiujitsio_chat_id, v_carlos_id, NOW())
     ON CONFLICT (chat_id, user_id) DO NOTHING;
     
-    RAISE NOTICE '✅ Updated Instructor: Professor Carlos Martinez';
+    IF v_jiujitsio_west_chat_id IS NOT NULL THEN
+      INSERT INTO chat_members (chat_id, user_id, joined_at)
+      VALUES (v_jiujitsio_west_chat_id, v_carlos_id, NOW())
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    END IF;
+    
+    RAISE NOTICE '✅ Updated Instructor: Professor Carlos Martinez (both gyms)';
   ELSE
     RAISE NOTICE '⚠️  Carlos account not found. Create carlos.martinez@jiujitsio.com in Dashboard first.';
   END IF;
@@ -97,7 +127,7 @@ BEGIN
       name = 'Coach Ana Rodriguez',
       role = 'instructor',
       gym_id = v_jiujitsio_gym_id,
-      gym_ids = ARRAY[v_jiujitsio_gym_id],
+      gym_ids = v_both_gym_ids,
       birthdate = '1990-11-08',
       age_category = 'adult',
       instructor_preferences = jsonb_build_object(
@@ -112,12 +142,18 @@ BEGIN
       private_lessons_enabled = true
     WHERE id = v_ana_id;
     
-    -- Add to gym chat
+    -- Add to both gym chats
     INSERT INTO chat_members (chat_id, user_id, joined_at)
     VALUES (v_jiujitsio_chat_id, v_ana_id, NOW())
     ON CONFLICT (chat_id, user_id) DO NOTHING;
     
-    RAISE NOTICE '✅ Updated Instructor: Coach Ana Rodriguez';
+    IF v_jiujitsio_west_chat_id IS NOT NULL THEN
+      INSERT INTO chat_members (chat_id, user_id, joined_at)
+      VALUES (v_jiujitsio_west_chat_id, v_ana_id, NOW())
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    END IF;
+    
+    RAISE NOTICE '✅ Updated Instructor: Coach Ana Rodriguez (both gyms)';
   ELSE
     RAISE NOTICE '⚠️  Ana account not found. Create ana.rodriguez@jiujitsio.com in Dashboard first.';
   END IF;
@@ -129,7 +165,7 @@ BEGIN
       name = 'Professor Mike Chen',
       role = 'instructor',
       gym_id = v_jiujitsio_gym_id,
-      gym_ids = ARRAY[v_jiujitsio_gym_id],
+      gym_ids = v_both_gym_ids,
       birthdate = '1988-04-30',
       age_category = 'adult',
       instructor_preferences = jsonb_build_object(
@@ -144,12 +180,18 @@ BEGIN
       private_lessons_enabled = true
     WHERE id = v_mike_id;
     
-    -- Add to gym chat
+    -- Add to both gym chats
     INSERT INTO chat_members (chat_id, user_id, joined_at)
     VALUES (v_jiujitsio_chat_id, v_mike_id, NOW())
     ON CONFLICT (chat_id, user_id) DO NOTHING;
     
-    RAISE NOTICE '✅ Updated Instructor: Professor Mike Chen';
+    IF v_jiujitsio_west_chat_id IS NOT NULL THEN
+      INSERT INTO chat_members (chat_id, user_id, joined_at)
+      VALUES (v_jiujitsio_west_chat_id, v_mike_id, NOW())
+      ON CONFLICT (chat_id, user_id) DO NOTHING;
+    END IF;
+    
+    RAISE NOTICE '✅ Updated Instructor: Professor Mike Chen (both gyms)';
   ELSE
     RAISE NOTICE '⚠️  Mike account not found. Create mike.chen@jiujitsio.com in Dashboard first.';
   END IF;
