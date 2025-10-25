@@ -19,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, conversationHistory, conversationState, gymId, userId, tools, toolResults } = await req.json()
+    const { message, conversationHistory, conversationState, gymId, userId, tools, toolResults, userTimezone } = await req.json()
 
     if (!message && !toolResults) {
       return new Response(
@@ -34,11 +34,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Build system prompt with context
-    const today = new Date()
+    // Build system prompt with context - Use user's timezone
+    const today = userTimezone 
+      ? new Date(new Date().toLocaleString('en-US', { timeZone: userTimezone }))
+      : new Date()
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     const todayName = dayNames[today.getDay()]
     const tomorrowName = dayNames[(today.getDay() + 1) % 7]
+    
+    // Check if there's conversation history
+    const hasHistory = conversationHistory && conversationHistory.length > 0
+    const historyNote = hasHistory 
+      ? `\n\nCONVERSATION MEMORY: You have access to our conversation history above. Reference previous discussions naturally when relevant.`
+      : `\n\nCONVERSATION MEMORY: This is the start of a new conversation.`
     
     const systemPrompt = `You are a helpful AI assistant for a Brazilian Jiu-Jitsu gym. You help users:
 - Find and understand class schedules
@@ -46,7 +54,20 @@ serve(async (req) => {
 - Cancel RSVPs
 - Answer questions about the gym
 
-IMPORTANT: Today is ${todayName}, ${today.toLocaleDateString()}. Tomorrow is ${tomorrowName}.
+IMPORTANT: Today is ${todayName}, ${today.toLocaleDateString()}. Tomorrow is ${tomorrowName}.${historyNote}
+
+CLASS TYPES:
+- GI: Traditional Brazilian Jiu-Jitsu with the gi (kimono)
+- NO-GI: Grappling without the gi (rashguard/shorts)
+- Open Mat: Open training session, typically no-gi or mixed
+- Competition: Competition-focused training
+
+BEST PRACTICES:
+1. When someone asks about "no-gi" classes, consider checking for both NO-GI classes AND Open Mat sessions using include_related: true
+2. If no classes are available on a specific day, proactively suggest the next available class of that type using find_next_class tool
+3. Always provide helpful alternatives rather than just saying "no classes available"
+4. When showing schedules, include the class type, day, time, and level
+5. If user asks "what did I ask last time" or similar, reference the conversation history provided above
 
 You have access to tools to check schedules, make RSVPs, and retrieve information.
 

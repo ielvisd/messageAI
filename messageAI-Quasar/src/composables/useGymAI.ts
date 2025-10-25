@@ -86,10 +86,11 @@ export function useGymAI() {
   const tools = [
     {
       name: 'get_schedule',
-      description: 'Get gym class schedules for a specific day or the entire week',
+      description: 'Get gym class schedules for a specific day or the entire week. Returns all schedules that match the filters.',
       parameters: {
         day_of_week: { type: 'string', description: 'Day of week (Monday-Sunday) or "all" for entire week' },
-        class_type: { type: 'string', description: 'Optional: Filter by class type (gi, nogi, kids, open_mat)', optional: true }
+        class_type: { type: 'string', description: 'Optional: Filter by class type. Use "GI" for gi classes, "NO-GI" for no-gi classes, "Open Mat" for open mat sessions, "Competition" for competition training. Note: Open Mat classes are often no-gi but stored separately.', optional: true },
+        include_related: { type: 'boolean', description: 'Optional: If true and class_type is NO-GI, also include Open Mat classes. Default false.', optional: true }
       }
     },
     {
@@ -118,6 +119,14 @@ export function useGymAI() {
       parameters: {
         query: { type: 'string', description: 'Natural language query about schedules' }
       }
+    },
+    {
+      name: 'find_next_class',
+      description: 'Find the next available class of a specific type after a given day. Useful for suggesting alternatives.',
+      parameters: {
+        class_type: { type: 'string', description: 'Class type to find (GI, NO-GI, Open Mat, Competition)' },
+        after_day: { type: 'string', description: 'Find classes after this day (Monday-Sunday)' }
+      }
     }
   ];
 
@@ -126,7 +135,7 @@ export function useGymAI() {
     try {
       switch (toolName) {
         case 'get_schedule':
-          return await getSchedule(gymId, parameters as { day_of_week?: string; class_type?: string });
+          return await getSchedule(gymId, parameters as { day_of_week?: string; class_type?: string; include_related?: boolean });
         case 'rsvp_to_class':
           return await rsvpToClass(parameters as { schedule_id: string; rsvp_date: string });
         case 'get_my_rsvps':
@@ -135,6 +144,8 @@ export function useGymAI() {
           return await cancelRsvp(parameters as { rsvp_id: string });
         case 'search_schedule_context':
           return await searchScheduleContext(gymId, parameters as { query: string });
+        case 'find_next_class':
+          return await findNextClass(gymId, parameters as { class_type: string; after_day: string });
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
@@ -149,7 +160,7 @@ export function useGymAI() {
   }
 
   // Tool implementations
-  async function getSchedule(gymId: string | null, params: { day_of_week?: string; class_type?: string }) {
+  async function getSchedule(gymId: string | null, params: { day_of_week?: string; class_type?: string; include_related?: boolean }) {
     if (!gymId) throw new Error('No gym selected');
     let query = supabase
       .from('gym_schedules')
@@ -162,7 +173,20 @@ export function useGymAI() {
     }
 
     if (params.class_type) {
-      query = query.eq('class_type', params.class_type);
+      // Normalize class type to uppercase and handle variations
+      const normalizedType = params.class_type.toUpperCase();
+      
+      // If asking for NO-GI and include_related is true, get both NO-GI and Open Mat
+      if ((normalizedType === 'NO-GI' || normalizedType === 'NOGI') && params.include_related) {
+        query = query.in('class_type', ['NO-GI', 'Open Mat']);
+      } else if (normalizedType === 'NOGI') {
+        query = query.eq('class_type', 'NO-GI');
+      } else if (normalizedType === 'OPEN_MAT' || normalizedType === 'OPENMAT') {
+        query = query.eq('class_type', 'Open Mat');
+      } else {
+        // Use the normalized uppercase version
+        query = query.eq('class_type', normalizedType);
+      }
     }
 
     const { data, error } = await query.order('start_time', { ascending: true });
@@ -243,6 +267,58 @@ export function useGymAI() {
     }
   }
 
+  // Find next available class of a specific type
+  async function findNextClass(gymId: string | null, params: { class_type: string; after_day: string }) {
+    if (!gymId) throw new Error('No gym selected');
+    
+    // Days of the week in order
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const afterDayIndex = daysOfWeek.indexOf(params.after_day);
+    
+    if (afterDayIndex === -1) throw new Error('Invalid day of week');
+    
+    // Normalize class type
+    const normalizedType = params.class_type.toUpperCase();
+    
+    // Build query to find classes
+    let classTypes: string[] = [];
+    if (normalizedType === 'NO-GI' || normalizedType === 'NOGI') {
+      // For no-gi, also include open mat
+      classTypes = ['NO-GI', 'Open Mat'];
+    } else if (normalizedType === 'OPEN_MAT' || normalizedType === 'OPENMAT') {
+      classTypes = ['Open Mat'];
+    } else {
+      classTypes = [normalizedType];
+    }
+    
+    // Get all matching classes for the week
+    const { data, error } = await supabase
+      .from('gym_schedules')
+      .select('*')
+      .eq('gym_id', gymId)
+      .eq('is_active', true)
+      .in('class_type', classTypes)
+      .order('start_time', { ascending: true });
+    
+    if (error) throw error;
+    
+    // Find the next class after the given day
+    const sortedDays = [...daysOfWeek.slice(afterDayIndex + 1), ...daysOfWeek.slice(0, afterDayIndex + 1)];
+    
+    for (const day of sortedDays) {
+      const dayClasses = data?.filter(s => s.day_of_week === day);
+      if (dayClasses && dayClasses.length > 0) {
+        return { 
+          next_class_day: day,
+          schedules: dayClasses,
+          message: `Next ${params.class_type} classes are on ${day}`
+        };
+      }
+    }
+    
+    return { schedules: [], message: `No ${params.class_type} classes found in the schedule` };
+  }
+
   // Capability 4: Memory/State Management
   async function saveConversation(gymId: string | null) {
     try {
@@ -280,7 +356,7 @@ export function useGymAI() {
   }
 
   // Main chat function
-  async function sendMessage(userMessage: string, gymId: string | null) {
+  async function sendMessage(userMessage: string, gymId: string | null, userTimezone?: string) {
     if (!gymId) {
       error.value = 'Please join a gym to use the AI Assistant';
       return { success: false, error: error.value, message: '' };
@@ -296,6 +372,9 @@ export function useGymAI() {
         timestamp: new Date().toISOString()
       });
 
+      // Get user's timezone if not provided
+      const timezone = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       // Call Edge Function with conversation context
       const { data, error: aiError } = await supabase.functions.invoke('gym-ai-assistant', {
         body: {
@@ -304,7 +383,8 @@ export function useGymAI() {
           conversationState: conversationState.value,
           gymId,
           userId: user.value?.id,
-          tools
+          tools,
+          userTimezone: timezone
         }
       });
 
@@ -343,6 +423,7 @@ export function useGymAI() {
             gymId,
             userId: user.value?.id,
             tools,
+            userTimezone: timezone,
             toolResults: data.tool_calls.map((tc: { name: string }, idx: number) => ({
               tool: tc.name,
               result: conversationState.value.context?.[conversationState.value.context.length - data.tool_calls.length + idx]
