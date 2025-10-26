@@ -72,18 +72,39 @@
 
 ---
 
-## 3. AI Features - The Game Changer (3 minutes)
+## 3. AI Features - The Game Changer (3 minutes 30 sec)
 
-### 3a. AI Assistant Introduction (20 sec)
-**[Click AI Assistant icon in header]**
+### 3a. ⭐ PROACTIVE AI Widget - The A++ Feature (45 sec)
+**[Point to floating bubble in bottom-right corner]**
 
-> "Here's where it gets interesting. This isn't just a chatbot - it's a gym operations AI with 12 working tools and 5 technical capabilities."
+> "Notice this floating bubble? This is the PROACTIVE AI monitor - it automatically checks for scheduling problems every 5 minutes. This is the difference between reactive and proactive AI."
 
-**[Show banner with 5 AI capabilities]**
+**[Click on the bubble to expand]**
+
+> "It's already running in the background. See - it found issues automatically without me asking. Let's see what it detected..."
+
+**[Show the expanded widget with alerts]**
+
+> "CRITICAL alerts for classes within 48 hours without instructors. WARNING for capacity issues. This runs continuously - owners see problems before students even notice."
+
+**[Point to severity badges: 🚨 CRITICAL, ⚠️ WARNING]**
+
+> "The AI prioritizes by severity. Classes starting soon get CRITICAL flags. This is proactive monitoring, not reactive chatbot responses."
+
+**[Click 'Ask AI' button in widget]**
+
+> "One click takes me directly to the AI Assistant with full context. Let's fix this problem..."
+
+### 3b. AI Assistant - Conversational Interface (20 sec)
+**[AI Assistant page opens from widget]**
+
+> "Now I'm in the AI chat interface. This isn't just a chatbot - it's a gym operations AI with 12 working tools and 5 technical capabilities."
+
+**[Show the chat interface]**
 
 > "The 5 required capabilities: RAG for conversation history, user preferences, function calling, memory/state, and error handling."
 
-### 3b. Schedule Queries (40 sec)
+### 3c. Schedule Queries (40 sec)
 **[Type: "What classes are available tomorrow?"]**
 
 > "Natural language schedule queries. The AI understands gym terminology - GI, NO-GI, Open Mat."
@@ -96,7 +117,7 @@
 
 > "See these IDs? The AI includes them so it can reference exact classes for RSVPs."
 
-### 3c. RSVP Automation (40 sec)
+### 3d. RSVP Automation (40 sec)
 **[Type: "RSVP me to the first GI class"]**
 
 > "Here's the function calling in action. The AI will:"
@@ -109,22 +130,10 @@
 
 > "Done. That's a multi-step workflow - query → parse → action → verify. All handled by the AI."
 
-### 3d. Advanced Capability - Proactive Problem Detection (1 minute 20 sec)
-**[Type: "Are there any problems with this week's schedule?"]**
+### 3e. Fix Problems with AI - Multi-Step Workflow (1 minute)
+**[Continue from widget context - the AI already knows about the problem]**
 
-> "This is my advanced capability - proactive scheduling assistant. It checks for:"
-> - Classes without instructors (CRITICAL if within 48 hours)
-> - Capacity issues
-> - Instructor conflicts
-> - Cancelled classes with active RSVPs
-
-**[Wait for AI response - should show problem report]**
-
-> "Look at the severity levels - CRITICAL, WARNING, INFO. The AI prioritizes what needs immediate attention."
-
-**[If AI found a problem with missing instructor:]**
-
-> "It detected a class without an instructor. Let's fix it with AI."
+> "The widget found a class without an instructor. Let me ask the AI to fix it."
 
 **[Type: "Who are the instructors?"]**
 
@@ -214,11 +223,14 @@
 
 ## Key Talking Points (Memorize These)
 
-1. **Persona Fit**: Jiu-Jitsu gym owner = Remote Team Professional
-2. **5 AI Capabilities**: RAG, Preferences, Function Calling, Memory, Error Handling
-3. **Advanced Feature**: Proactive scheduling problem detection with severity levels
-4. **Tech Stack**: Quasar + Supabase + OpenAI GPT-4o-mini
-5. **Production Ready**: Real-time, offline support, push notifications, role-based access
+1. **⭐ PROACTIVE AI WIDGET**: Auto-monitors schedule every 5 minutes, finds problems before anyone asks
+2. **Persona Fit**: Jiu-Jitsu gym owner = Remote Team Professional
+3. **5 AI Capabilities**: RAG, Preferences, Function Calling, Memory, Error Handling
+4. **Advanced Feature**: Floating bubble widget with severity-based alerts (CRITICAL/WARNING/INFO)
+5. **Tech Stack**: Quasar + Supabase + OpenAI GPT-4o-mini
+6. **Production Ready**: Real-time, offline support, push notifications, role-based access
+
+**Demo Opening Hook**: "Notice the AI already found a problem - that's proactive, not reactive."
 
 ---
 

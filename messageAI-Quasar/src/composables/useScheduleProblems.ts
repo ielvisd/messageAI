@@ -2,13 +2,14 @@ import { ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 
 export interface ScheduleProblem {
-  type: 'no_instructor' | 'over_capacity' | 'instructor_conflict' | 'cancelled_with_rsvps'
+  type: 'no_instructor' | 'over_capacity' | 'instructor_conflict' | 'cancelled_with_rsvps' | 'instructor_availability_conflict'
   severity: 'critical' | 'warning' | 'info'
   schedule_id: string
   schedule?: any
   date?: string
   message: string
   suggested_actions: string[]
+  instructor_name?: string
 }
 
 export function useScheduleProblems() {
@@ -69,6 +70,39 @@ export function useScheduleProblems() {
                 'Request instructor coverage in gym chat'
               ]
             })
+          }
+
+          // Problem 1b: Instructor assigned but not available at this time
+          if (schedule.instructor_id) {
+            const { data: instructor } = await supabase
+              .from('profiles')
+              .select('name, instructor_preferences')
+              .eq('id', schedule.instructor_id)
+              .single()
+
+            if (instructor?.instructor_preferences) {
+              const prefs = instructor.instructor_preferences as any
+              const dayLower = schedule.day_of_week?.toLowerCase()
+              const isAvailable = prefs.available_days?.includes(dayLower)
+
+              // Check if instructor hasn't marked this day as available
+              if (!isAvailable && prefs.available_days && prefs.available_days.length > 0) {
+                detectedProblems.push({
+                  type: 'instructor_availability_conflict',
+                  severity: daysUntil <= 2 ? 'warning' : 'info',
+                  schedule_id: schedule.id,
+                  schedule,
+                  date,
+                  instructor_name: instructor.name,
+                  message: `${instructor.name} is assigned to ${schedule.class_type || 'Class'} on ${schedule.day_of_week} at ${formatTime(schedule.start_time || '')}, but hasn't marked this time as available`,
+                  suggested_actions: [
+                    'Confirm availability with instructor',
+                    'Assign a different instructor',
+                    'Update instructor availability preferences'
+                  ]
+                })
+              }
+            }
           }
 
           // Problem 3: Check if cancelled but has RSVPs

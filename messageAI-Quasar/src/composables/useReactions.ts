@@ -185,10 +185,13 @@ export function useReactions(messageId?: string) {
 
       const group = grouped.get(reaction.emoji)!
       group.count++
-      group.users.push({
-        id: reaction.user_id,
-        name: reaction.user_name
-      })
+      const userEntry: { id: string; name?: string } = {
+        id: reaction.user_id
+      }
+      if (reaction.user_name) {
+        userEntry.name = reaction.user_name
+      }
+      group.users.push(userEntry)
 
       if (reaction.user_id === user.value?.id) {
         group.hasUserReacted = true
@@ -208,53 +211,64 @@ export function useReactions(messageId?: string) {
   }
 
   /**
-   * Subscribe to realtime updates for reactions
+   * Subscribe to realtime updates for reactions via window events
+   * (Reactions are now synced via the chat-level channel, not per-message channels)
    */
   const subscribeToReactions = (msgId: string) => {
     if (!msgId) return
 
-    realtimeChannel = supabase
-      .channel(`reactions:${msgId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'message_reactions',
-          filter: `message_id=eq.${msgId}`
-        },
-        async (payload) => {
-          console.log('Reaction change:', payload)
+    // Handler for reaction added events
+    const handleReactionAdded = async (event: Event) => {
+      const customEvent = event as CustomEvent
+      const reaction = customEvent.detail
+      
+      // Only process if it's for our message
+      if (reaction.message_id !== msgId) return
 
-          if (payload.eventType === 'INSERT') {
-            // Fetch user name for new reaction
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('name')
-              .eq('id', (payload.new as any).user_id)
-              .single()
+      // Fetch user name for new reaction
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', reaction.user_id)
+        .single()
 
-            const newReaction: Reaction = {
-              id: (payload.new as any).id,
-              message_id: (payload.new as any).message_id,
-              user_id: (payload.new as any).user_id,
-              emoji: (payload.new as any).emoji,
-              created_at: (payload.new as any).created_at,
-              user_name: profile?.name
-            }
+      const newReaction: Reaction = {
+        id: reaction.id,
+        message_id: reaction.message_id,
+        user_id: reaction.user_id,
+        emoji: reaction.emoji,
+        created_at: reaction.created_at,
+        user_name: profile?.name
+      }
 
-            // Add if not already present
-            if (!reactions.value.find(r => r.id === newReaction.id)) {
-              reactions.value.push(newReaction)
-            }
-          } else if (payload.eventType === 'DELETE') {
-            reactions.value = reactions.value.filter(
-              r => r.id !== (payload.old as any).id
-            )
-          }
-        }
-      )
-      .subscribe()
+      // Add if not already present
+      if (!reactions.value.find(r => r.id === newReaction.id)) {
+        reactions.value.push(newReaction)
+        console.log('✅ Reaction added to local state:', newReaction.emoji)
+      }
+    }
+
+    // Handler for reaction removed events
+    const handleReactionRemoved = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const reaction = customEvent.detail
+      
+      // Only process if it's for our message
+      if (reaction.message_id !== msgId) return
+
+      reactions.value = reactions.value.filter(r => r.id !== reaction.id)
+      console.log('✅ Reaction removed from local state')
+    }
+
+    // Listen to custom events from the chat-level channel
+    window.addEventListener('reaction-added', handleReactionAdded)
+    window.addEventListener('reaction-removed', handleReactionRemoved)
+    
+    // Store handlers for cleanup
+    realtimeChannel = {
+      handleReactionAdded,
+      handleReactionRemoved
+    } as any
   }
 
   /**
@@ -262,7 +276,9 @@ export function useReactions(messageId?: string) {
    */
   const unsubscribeFromReactions = () => {
     if (realtimeChannel) {
-      supabase.removeChannel(realtimeChannel)
+      const handlers = realtimeChannel as any
+      window.removeEventListener('reaction-added', handlers.handleReactionAdded)
+      window.removeEventListener('reaction-removed', handlers.handleReactionRemoved)
       realtimeChannel = null
     }
   }

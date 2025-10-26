@@ -7,6 +7,15 @@ type Message = {
   content: string;
   timestamp?: string;
   tool_calls?: unknown[];
+  suggested_actions?: SuggestedAction[];
+};
+
+type SuggestedAction = {
+  type: string;
+  label: string;
+  icon: string;
+  color: string;
+  params: Record<string, unknown>;
 };
 
 type ConversationState = {
@@ -155,7 +164,7 @@ export function useGymAI() {
     },
     {
       name: 'check_schedule_problems',
-      description: 'Detect scheduling issues like missing instructors, capacity problems, or conflicts. Returns a list of problems with severity and suggested actions.',
+      description: 'Detect scheduling issues like missing instructors, capacity problems, or conflicts. NOTE: Automatically checks user role - students get a professional message, instructors/owners get detailed problems. Returns a list of problems with severity and suggested actions.',
       parameters: {
         date_range: { type: 'object', description: 'Optional: {start: "YYYY-MM-DD", end: "YYYY-MM-DD"}. Default is next 7 days.', optional: true }
       }
@@ -272,20 +281,51 @@ export function useGymAI() {
 
     console.log(`🔄 Making RSVP for schedule_id: ${params.schedule_id}, date: ${params.rsvp_date}`);
 
-    // Check capacity first
+    // Validate UUID format (8-4-4-4-12 pattern)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(params.schedule_id)) {
+      console.error('❌ Invalid schedule_id format:', params.schedule_id);
+      throw new Error(`Invalid schedule ID format. Please ask for the schedule again to get a valid ID.`);
+    }
+
+    // First, try to find the schedule WITHOUT .single() to see if it exists at all
+    const { data: scheduleCheck, error: checkError } = await supabase
+      .from('gym_schedules')
+      .select('id, gym_id, class_type, is_active')
+      .eq('id', params.schedule_id);
+
+    if (checkError) {
+      console.error('❌ Error checking schedule existence:', checkError);
+      throw new Error(`Database error: ${checkError.message}`);
+    }
+
+    if (!scheduleCheck || scheduleCheck.length === 0) {
+      console.error('❌ Schedule not found in database. ID:', params.schedule_id);
+      console.error('❌ This likely means the AI used an invalid or outdated schedule_id');
+      throw new Error(`Schedule not found. Please try asking for the schedule again to get the correct ID.`);
+    }
+
+    const scheduleInfo = scheduleCheck[0];
+    if (!scheduleInfo) {
+      throw new Error(`Schedule not found. Please try asking for the schedule again to get the correct ID.`);
+    }
+
+    console.log(`📋 Found schedule:`, scheduleInfo);
+
+    if (!scheduleInfo.is_active) {
+      throw new Error(`This class is no longer active. Please check the current schedule.`);
+    }
+
+    // Now get full schedule details with .single() since we know it exists
     const { data: schedule, error: scheduleError } = await supabase
       .from('gym_schedules')
-      .select('max_capacity, current_rsvps, class_type, day_of_week, start_time')
+      .select('max_capacity, current_rsvps, class_type, day_of_week, start_time, gym_id')
       .eq('id', params.schedule_id)
       .single();
 
-    if (scheduleError) {
-      console.error('❌ Error fetching schedule:', scheduleError);
-      throw new Error(`Schedule not found: ${scheduleError.message}`);
-    }
-
-    if (!schedule) {
-      throw new Error('Schedule not found');
+    if (scheduleError || !schedule) {
+      console.error('❌ Error fetching full schedule details:', scheduleError);
+      throw new Error(`Unable to access schedule details. You may not have permission to RSVP to this class.`);
     }
 
     const status = schedule.max_capacity && schedule.current_rsvps >= schedule.max_capacity
@@ -557,14 +597,35 @@ export function useGymAI() {
   // New Tool: Check schedule problems
   async function checkScheduleProblems(gymId: string | null, params: { date_range?: { start: string; end: string } }) {
     if (!gymId) throw new Error('No gym selected');
+    if (!user.value?.id) throw new Error('User not authenticated');
 
-    // Use the useScheduleProblems composable
+    // Check user role - only instructors and owners can see detailed problems
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single();
+
+    const isStaff = profile && (profile.role === 'instructor' || profile.role === 'owner');
+
+    if (!isStaff) {
+      // Students get a professional, reassuring response
+      return {
+        is_student: true,
+        message: 'As a student, you don\'t have access to detailed scheduling information. All classes shown on the schedule are currently active unless marked as cancelled. If there are any changes or updates, the gym staff will post announcements in the gym chat. If you have specific questions about a class, please reach out to the gym staff directly.',
+        problems: [],
+        summary: { total: 0, critical: 0, warnings: 0, info: 0 }
+      };
+    }
+
+    // Use the useScheduleProblems composable for staff
     const { useScheduleProblems } = await import('./useScheduleProblems');
     const { checkProblems: checkFn } = useScheduleProblems();
     
     const problems = await checkFn(gymId, params.date_range);
 
     return {
+      is_student: false,
       problems,
       summary: {
         total: problems.length,
@@ -837,7 +898,8 @@ export function useGymAI() {
         messages.value.push({
           role: 'assistant',
           content: data.message || 'Let me check that for you...',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          suggested_actions: []
         });
         
         // Execute tools and collect results
@@ -935,14 +997,16 @@ export function useGymAI() {
           messages.value.push({
             role: 'assistant',
             content: finalData.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            suggested_actions: finalData.suggested_actions || []
           });
         } else {
           // No more tools needed, just add the response
           messages.value.push({
             role: 'assistant',
             content: followupData.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            suggested_actions: followupData.suggested_actions || []
           });
         }
       } else {
@@ -950,7 +1014,8 @@ export function useGymAI() {
         messages.value.push({
           role: 'assistant',
           content: data.message,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          suggested_actions: data.suggested_actions || []
         });
       }
 
@@ -977,9 +1042,11 @@ export function useGymAI() {
   }
 
   // Initialize
-  async function initialize(gymId: string | null) {
+  async function initialize(gymId: string | null, options: { skipHistory?: boolean } = {}) {
     if (!gymId) return;
-    await loadConversationHistory(gymId);
+    if (!options.skipHistory) {
+      await loadConversationHistory(gymId);
+    }
     await loadUserPreferences();
   }
 
@@ -987,11 +1054,13 @@ export function useGymAI() {
     messages,
     loading,
     error,
+    conversationId, // Export for session management
     conversationState,
     tools,
     sendMessage,
     initialize,
     updateUserPreferences,
-    saveConversation
+    saveConversation,
+    executeTool // Export for AIInsightsWidget
   };
 }

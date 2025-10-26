@@ -225,21 +225,51 @@
 
 ### Section 4: AI Features - The Game Changer (3:15-5:45, 2 minutes 30 seconds)
 
-#### 4A: AI Introduction & 5 Capabilities (3:15-3:35, 20 seconds)
+#### 4A: ⭐ PROACTIVE AI Widget - The A++ Feature (3:15-3:50, 35 seconds)
 
 **iPad (Owner):**
-1. Click AI Assistant icon in header (robot/brain icon)
-2. Show AI chat interface
-3. **POINT OUT:** If visible, show banner/UI indicating 5 capabilities
+1. **POINT TO** floating bubble in bottom-right corner (should auto-appear after login)
+2. Hover mouse over bubble to show tooltip
+3. Click bubble to expand widget
+4. Show expanded card with alerts (CRITICAL/WARNING badges)
+5. Point to "Last checked: X minutes ago"
+6. Show refresh button (optional: click to re-check)
 
 **Narration:**
-> "Now the AI - this isn't just a chatbot. It has 12 working tools and 5 technical capabilities: RAG for conversation history stored in the ai_conversations table, user preferences stored in JSONB, function calling with 12 tools, memory and state management persisting across sessions, and comprehensive error handling with graceful fallbacks."
+> "First - notice this floating bubble. This is the PROACTIVE AI monitor. It automatically checks for scheduling problems every 5 minutes. See - it's already found issues without me asking anything. This is the difference between reactive chatbots and proactive AI agents. Classes within 48 hours without instructors get CRITICAL alerts. The widget runs continuously in the background - owners see problems before students even notice."
 
-**Timing: 20 seconds**
+**Timing: 35 seconds**
 
 ---
 
-#### 4B: AI Capability 1 - Schedule Queries (RAG + Function Calling) (3:35-4:05, 30 seconds)
+#### 4B: From Widget to AI Assistant (3:50-4:05, 15 seconds)
+
+**iPad (Owner):**
+1. In expanded widget, click "Ask AI" button
+2. Navigate to AI Assistant page
+3. **OBSERVE:** Smooth transition with context
+
+**Narration:**
+> "One click takes me from alert to AI Assistant with full context. Now let's use the AI's 12 tools and 5 technical capabilities to fix this problem."
+
+**Timing: 15 seconds**
+
+---
+
+#### 4C: AI Introduction & 5 Capabilities (4:05-4:20, 15 seconds)
+
+**iPad (Owner - AI Assistant page):**
+1. Show AI chat interface
+2. **POINT OUT:** The 5 capabilities banner/mention
+
+**Narration:**
+> "RAG for conversation history, user preferences in JSONB, function calling with 12 tools, persistent memory, and comprehensive error handling."
+
+**Timing: 15 seconds**
+
+---
+
+#### 4D: AI Capability 1 - Schedule Queries (RAG + Function Calling) (4:20-4:45, 25 seconds)
 
 **iPad (Owner - AI Assistant):**
 1. Type: "What classes are tomorrow?"
@@ -258,7 +288,7 @@
 
 ---
 
-#### 4C: AI Capability 2 & 3 - RSVP Multi-Step Workflow (Memory + Preferences) (4:05-4:30, 25 seconds)
+#### 4E: AI Capability 2 & 3 - RSVP Multi-Step Workflow (Memory + Preferences) (4:45-5:10, 25 seconds)
 
 **iPad (Owner - AI Assistant):**
 1. Type: "RSVP me to the first GI class"
@@ -276,46 +306,26 @@
 
 ---
 
-#### 4D: AI Capability 4 - Advanced Proactive Problem Detection (4:30-5:30, 1 minute)
+#### 4F: AI Capability 4 - Fix Problems with Multi-Tool Workflow (5:10-5:45, 35 seconds)
 
 **iPad (Owner - AI Assistant):**
-1. Type: "Are there any problems with this week's schedule?"
-2. Send
-3. **WAIT:** AI calls check_schedule_problems tool
-4. **OBSERVE:** Response showing:
-   - 🚨 CRITICAL: Class without instructor (tomorrow or within 48h)
-   - Severity level clearly marked
-   - Specific class details
-   - Suggested actions
-
-**Narration:**
-> "This is my advanced capability - proactive scheduling assistant. It automatically checks for classes without instructors, marking them CRITICAL if within 48 hours, capacity issues, instructor conflicts, and cancelled classes with active RSVPs. Look at the severity levels - CRITICAL, WARNING, INFO. The AI prioritizes what needs immediate attention and provides actionable suggestions."
-
-**Timing: 1 minute**
-
----
-
-#### 4E: AI Multi-Tool Chain - Fix Problem with AI (5:30-5:45, 15 seconds)
-
-**iPad (Owner - AI Assistant):**
-1. Type: "Who are the instructors?"
-2. **WAIT:** AI lists instructors (Carlos, Ana, Mike)
-3. Type: "Assign Carlos to that class"
+1. Type: "Who are the available instructors?"
+2. **WAIT:** AI lists instructors with their IDs
+3. Type: "Assign Carlos to the class that needs an instructor"
 4. **WAIT:** AI chains multiple tools:
-   - get_instructors (already done)
-   - Retrieves schedule from memory (conversation state)
-   - Matches "Carlos" to Carlos Martinez profile ID
-   - Calls assign_instructor_to_class with proper UUIDs
+   - Remembers the problematic class from widget context
+   - Gets Carlos's profile UUID from previous query
+   - Calls assign_instructor_to_class tool
 5. **OBSERVE:** Success confirmation
 
 **Narration:**
-> "Problem solved through conversation. The AI chained 3 tool calls automatically - getting instructors, retrieving the problematic schedule from memory, and making the assignment. That's agentic behavior, not basic prompting. This demonstrates error handling with UUID validation and graceful fallbacks if anything fails."
+> "The widget found the problem, now let's fix it. Watch the AI chain multiple tools together: it remembers the problematic class, matches 'Carlos' to the correct UUID, and assigns him automatically. This demonstrates error handling with UUID validation and graceful fallbacks. Problem solved through conversation."
 
-**Timing: 15 seconds**
+**Timing: 35 seconds**
 
 ---
 
-#### 4F: OPTIONAL - Voice Input (If time permits, otherwise SKIP)
+#### 4G: OPTIONAL - Voice Input (If time permits, otherwise SKIP)
 
 **iPad (Owner - AI Assistant):**
 1. Click microphone icon
@@ -354,13 +364,11 @@
 **Narration:**
 > "So that's Ossome - production-ready team communication built specifically for Jiu-Jitsu gyms."
 >
+> "The star feature: A PROACTIVE AI that monitors continuously, finding problems before anyone asks. That floating widget checks every 5 minutes - it's an agent, not just a chatbot."
+>
 > "Real-time messaging with offline support, group chats, media sharing, and role-based access for owners, instructors, students, and parents."
 >
-> "An AI assistant that actually understands gym operations - not just generic chatbot responses."
->
-> "All 5 required technical capabilities implemented: RAG pipeline with conversation history, user preferences in JSONB storage, function calling with 12 working tools, persistent memory and state management, and comprehensive error handling."
->
-> "Plus the advanced proactive scheduling capability that detects problems before they become emergencies."
+> "All 5 required AI capabilities: RAG pipeline, user preferences, function calling with 12 tools, persistent memory, and comprehensive error handling."
 >
 > "Built for the Remote Team Professional persona - gym owners coordinating trainers across multiple locations and time zones."
 >
@@ -459,6 +467,7 @@ Before recording, ensure:
 
 Your demo MUST clearly demonstrate:
 
+- ✅ **⭐ PROACTIVE AI WIDGET** - The A++ feature (floating bubble, auto-check, severity alerts)
 - ✅ **Real-time messaging** between 2+ devices (iPad + iPhone 1)
 - ✅ **Group chat** with 3+ participants (all 3 simulators)
 - ✅ **Offline scenario** with message queueing and sync (iPhone 2)
@@ -469,10 +478,12 @@ Your demo MUST clearly demonstrate:
   3. Function Calling - 12 tools in action
   4. Memory/State - persistent across messages
   5. Error Handling - validation and fallbacks
-- ✅ **Advanced capability** - Proactive problem detection
+- ✅ **Advanced capability** - Proactive continuous monitoring with floating widget
 - ✅ **Clear persona statement** - Jiu-Jitsu gym owner
 - ✅ **Clear problem/solution** statement
 - ✅ **Under 7 minutes** total runtime
+
+**Opening Hook**: "See this bubble? The AI already found a problem - that's proactive."
 
 ---
 

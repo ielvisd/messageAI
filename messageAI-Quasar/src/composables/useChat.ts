@@ -624,7 +624,53 @@ export function useChat(chatId: string) {
             }
           }
         )
-        .subscribe()
+        .on('postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'message_reactions'
+          },
+          async (payload) => {
+            console.log('😀 Real-time reaction event:', payload.eventType, payload)
+            
+            if (payload.eventType === 'INSERT') {
+              const reaction = payload.new as any
+              
+              // Notify components via custom event
+              window.dispatchEvent(new CustomEvent('reaction-added', {
+                detail: {
+                  id: reaction.id,
+                  message_id: reaction.message_id,
+                  user_id: reaction.user_id,
+                  emoji: reaction.emoji,
+                  created_at: reaction.created_at
+                }
+              }))
+              
+              console.log(`✅ Reaction ${reaction.emoji} added to message ${reaction.message_id}`)
+            } else if (payload.eventType === 'DELETE') {
+              const reaction = payload.old as any
+              
+              // Notify components via custom event
+              window.dispatchEvent(new CustomEvent('reaction-removed', {
+                detail: {
+                  id: reaction.id,
+                  message_id: reaction.message_id,
+                  user_id: reaction.user_id,
+                  emoji: reaction.emoji
+                }
+              }))
+              
+              console.log(`✅ Reaction removed from message ${reaction.message_id}`)
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('📡 Chat channel status:', status)
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Subscribed to messages, read receipts, and reactions')
+          }
+        })
 
       // Mark as read when component mounts
       void markAsRead()

@@ -406,14 +406,23 @@ async function loadStudentRSVPs() {
 }
 
 function formatRSVPDate(dateString: string): string {
-  const date = new Date(dateString)
+  // Parse date string as local date (avoid UTC timezone issues)
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(year, month - 1, day) // month is 0-indexed
+  
   const today = new Date()
+  today.setHours(0, 0, 0, 0) // Normalize to start of day
+  
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
-  if (date.toDateString() === today.toDateString()) {
+  // Normalize date to start of day for comparison
+  const dateNormalized = new Date(date)
+  dateNormalized.setHours(0, 0, 0, 0)
+
+  if (dateNormalized.getTime() === today.getTime()) {
     return 'Today'
-  } else if (date.toDateString() === tomorrow.toDateString()) {
+  } else if (dateNormalized.getTime() === tomorrow.getTime()) {
     return 'Tomorrow'
   } else {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

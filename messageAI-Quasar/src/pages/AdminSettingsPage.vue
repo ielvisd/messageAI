@@ -1,364 +1,706 @@
 <template>
   <q-page class="q-pa-md">
-    <div style="max-width: 800px; margin: 0 auto;">
-      <div class="text-h4 q-mb-lg">Gym Settings</div>
+    <div style="max-width: 1000px; margin: 0 auto;">
+      <!-- Header with Gym Switcher -->
+      <div class="row items-center q-mb-lg">
+        <div class="col">
+          <div class="text-h4">Settings</div>
+          <div class="text-subtitle2 text-grey-7" v-if="gym">{{ gym.name }}</div>
+        </div>
+        <div class="col-auto" v-if="ownedGyms.length > 1">
+          <q-btn-dropdown
+            color="primary"
+            :label="gym?.name || 'Select Gym'"
+            icon="business"
+            unelevated
+            no-caps
+          >
+            <q-list>
+              <q-item
+                v-for="g in ownedGyms"
+                :key="g.id"
+                clickable
+                v-close-popup
+                @click="switchGym(g.id)"
+                :active="g.id === currentGymId"
+              >
+                <q-item-section avatar>
+                  <q-icon :name="g.id === currentGymId ? 'check_circle' : 'business'" color="primary" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ g.name }}</q-item-label>
+                  <q-item-label caption>{{ g.members_count }} members</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup @click="showCreateGymDialog = true">
+                <q-item-section avatar>
+                  <q-icon name="add_circle" color="positive" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Create New Gym</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+        </div>
+      </div>
 
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-center q-pa-xl">
         <q-spinner color="primary" size="3em" />
       </div>
 
-      <!-- Settings Sections -->
-      <div v-else class="q-gutter-md">
-        <!-- Gym Switcher -->
-        <q-card flat bordered v-if="ownedGyms.length > 1">
-          <q-card-section>
-            <div class="text-h6 q-mb-md">Manage Gyms</div>
-            <div class="text-caption text-grey-7 q-mb-md">
-              You own multiple gyms. Switch between them or create a new one.
-            </div>
-          </q-card-section>
-          
-          <q-card-section>
-            <div class="text-subtitle2 q-mb-md">Your Gyms ({{ ownedGyms.length }})</div>
-            <q-list bordered separator>
-              <q-item 
-                v-for="gym in ownedGyms" 
-                :key="gym.id"
-                clickable
-                @click="switchGym(gym.id)"
-                :active="gym.id === currentGymId"
-              >
-                <q-item-section avatar>
-                  <q-avatar color="primary" text-color="white">
-                    <q-icon :name="gym.id === currentGymId ? 'check_circle' : 'business'" />
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ gym.name }}</q-item-label>
-                  <q-item-label caption>
-                    {{ gym.members_count }} member{{ gym.members_count !== 1 ? 's' : '' }}
-                  </q-item-label>
-                  <q-item-label caption v-if="gym.locations && gym.locations.length">
-                    {{ gym.locations.length }} location{{ gym.locations.length !== 1 ? 's' : '' }}
-                  </q-item-label>
-                </q-item-section>
-                <q-item-section side v-if="gym.id === currentGymId">
-                  <q-badge color="positive">Active</q-badge>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-card-section>
-          
-          <q-card-actions>
-            <q-btn 
-              label="Create New Gym" 
-              icon="add" 
-              color="primary"
-              unelevated
-              no-caps
-              @click="showCreateGymDialog = true"
-            />
-          </q-card-actions>
-        </q-card>
+      <!-- Tabbed Settings -->
+      <div v-else>
+        <q-tabs
+          v-model="activeTab"
+          dense
+          class="text-grey-7"
+          active-color="primary"
+          indicator-color="primary"
+          align="left"
+          narrow-indicator
+        >
+          <q-tab name="general" icon="settings" label="General" no-caps />
+          <q-tab name="ai" icon="smart_toy" label="AI Monitoring" no-caps>
+            <q-badge v-if="aiPrefs.severityFilter !== 'warning'" color="info" floating>Custom</q-badge>
+          </q-tab>
+          <q-tab name="permissions" icon="admin_panel_settings" label="Permissions" no-caps />
+          <q-tab name="members" icon="people" label="Member Requests" no-caps>
+            <q-badge v-if="pendingRequests.length > 0" color="negative" floating>{{ pendingRequests.length }}</q-badge>
+          </q-tab>
+        </q-tabs>
 
-        <!-- Gym Details -->
-        <q-card>
-          <q-card-section>
-            <div class="text-h6 q-mb-md">Gym Details</div>
-            
-            <q-input
-              v-model="gymName"
-              label="Gym Name"
-              filled
-              class="q-mb-md"
-            />
+        <q-separator class="q-mb-md" />
 
-            <div class="text-subtitle2 q-mb-sm">Locations</div>
-            <q-list bordered>
-              <q-item v-for="(location, index) in locations" :key="index">
-                <q-item-section>
-                  <q-item-label>{{ location.name }}</q-item-label>
-                  <q-item-label caption>{{ location.address }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="delete"
-                    color="negative"
-                    @click="removeLocation(index)"
-                  />
-                </q-item-section>
-              </q-item>
-            </q-list>
-
-            <div class="q-mt-md q-gutter-sm">
-              <q-input
-                v-model="newLocation.name"
-                label="Location Name"
-                dense
-                filled
-              />
-              <q-input
-                v-model="newLocation.address"
-                label="Address"
-                dense
-                filled
-              />
-              <q-btn
-                label="Add Location"
-                icon="add"
-                outline
-                @click="addLocation"
-                :disable="!newLocation.name || !newLocation.address"
-              />
-            </div>
-
-            <q-btn
-              label="Save Gym Details"
-              color="primary"
-              class="q-mt-md"
-              @click="saveGymDetails"
-              :loading="savingDetails"
-            />
-          </q-card-section>
-        </q-card>
-
-        <!-- Gym QR Code -->
-        <q-card>
-          <q-expansion-item 
-            label="Gym QR Code"
-            icon="qr_code"
-            header-class="text-h6"
-            default-opened
-          >
-            <q-card-section>
-              <div class="text-caption text-grey-7 q-mb-md">Students can scan this to join your gym</div>
-              
-              <div class="text-center">
-                <div v-if="qrCodeURL">
-                  <img :src="qrCodeURL" alt="Gym QR Code" style="max-width: 300px; width: 100%;" />
+        <q-tab-panels v-model="activeTab" animated transition-prev="slide-down" transition-next="slide-up">
+          <!-- General Tab -->
+          <q-tab-panel name="general" class="q-pa-none">
+            <div class="q-gutter-md">
+              <!-- Gym Details Card -->
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <q-icon name="business" size="sm" class="q-mr-sm" color="primary" />
+                    <div class="text-h6">Gym Details</div>
+                  </div>
                   
-                  <!-- Join Link -->
-                  <div class="q-mt-md">
-                    <div class="text-caption text-grey-7 q-mb-xs">Join Link</div>
-                    <q-input
-                      :model-value="joinURL"
-                      readonly
-                      outlined
-                      dense
-                    >
-                      <template v-slot:append>
+                  <q-input
+                    v-model="gymName"
+                    label="Gym Name"
+                    filled
+                    dense
+                    class="q-mb-md"
+                    :rules="[val => val && val.length > 0 || 'Name is required']"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="edit" />
+                    </template>
+                  </q-input>
+
+                  <div class="text-subtitle2 q-mb-md">Locations</div>
+                  <q-list bordered separator v-if="locations.length > 0">
+                    <q-item v-for="(location, index) in locations" :key="index">
+                      <q-item-section avatar>
+                        <q-avatar color="grey-3" text-color="grey-7" icon="place" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>{{ location.name }}</q-item-label>
+                        <q-item-label caption>{{ location.address }}</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
                         <q-btn
-                          icon="content_copy"
                           flat
-                          dense
                           round
-                          @click="copyJoinURL"
+                          dense
+                          icon="delete"
+                          color="negative"
+                          @click="removeLocation(index)"
                         >
-                          <q-tooltip>Copy Link</q-tooltip>
+                          <q-tooltip>Remove location</q-tooltip>
                         </q-btn>
-                      </template>
-                    </q-input>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                  <div v-else class="text-center q-pa-md text-grey-7">
+                    <q-icon name="location_off" size="md" />
+                    <div class="q-mt-sm">No locations added yet</div>
+                  </div>
+
+                  <div class="q-mt-md">
+                    <q-expansion-item
+                      dense
+                      dense-toggle
+                      expand-separator
+                      icon="add_location"
+                      label="Add New Location"
+                      header-class="text-primary"
+                    >
+                      <q-card flat bordered class="q-pa-md q-mt-sm">
+                        <div class="q-gutter-sm">
+                          <q-input
+                            v-model="newLocation.name"
+                            label="Location Name"
+                            dense
+                            filled
+                          />
+                          <q-input
+                            v-model="newLocation.address"
+                            label="Address"
+                            dense
+                            filled
+                          />
+                          <q-btn
+                            label="Add Location"
+                            icon="add"
+                            color="primary"
+                            unelevated
+                            no-caps
+                            @click="addLocation"
+                            :disable="!newLocation.name || !newLocation.address"
+                          />
+                        </div>
+                      </q-card>
+                    </q-expansion-item>
+                  </div>
+                </q-card-section>
+                
+                <q-separator />
+                
+                <q-card-actions align="right">
+                  <q-btn 
+                    label="Save Changes" 
+                    color="primary" 
+                    unelevated
+                    no-caps
+                    icon="save"
+                    @click="saveGymDetails"
+                    :loading="savingDetails"
+                  />
+                </q-card-actions>
+              </q-card>
+
+              <!-- QR Code Card -->
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <q-icon name="qr_code_2" size="sm" class="q-mr-sm" color="primary" />
+                    <div class="text-h6">Student Join QR Code</div>
+                  </div>
+                  <div class="text-caption text-grey-7 q-mb-md">Students can scan this code or use the link to join your gym</div>
+                  
+                  <div class="row q-col-gutter-md">
+                    <div class="col-12 col-md-6">
+                      <div class="text-center bg-grey-1 rounded-borders q-pa-md">
+                        <div v-if="qrCodeURL">
+                          <img :src="qrCodeURL" alt="Gym QR Code" style="max-width: 250px; width: 100%;" class="rounded-borders" />
+                        </div>
+                        <div v-else class="q-pa-xl">
+                          <q-spinner-hourglass color="primary" size="50px" />
+                          <div class="text-caption q-mt-sm">Generating...</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="col-12 col-md-6">
+                      <div class="q-gutter-sm">
+                        <q-input
+                          :model-value="joinURL"
+                          readonly
+                          filled
+                          dense
+                          label="Join Link"
+                        >
+                          <template v-slot:append>
+                            <q-btn
+                              icon="content_copy"
+                              flat
+                              dense
+                              round
+                              @click="copyJoinURL"
+                            >
+                              <q-tooltip>Copy</q-tooltip>
+                            </q-btn>
+                          </template>
+                        </q-input>
+                        
+                        <q-btn
+                          label="Print Flyer"
+                          icon="print"
+                          color="primary"
+                          unelevated
+                          no-caps
+                          class="full-width"
+                          @click="showPrintDialog = true"
+                          :disable="!qrCodeURL"
+                        />
+                        <q-btn
+                          label="Download QR"
+                          icon="download"
+                          outline
+                          color="primary"
+                          no-caps
+                          class="full-width"
+                          @click="downloadQR"
+                          :disable="!qrCodeURL"
+                        />
+                        <q-btn
+                          label="Regenerate Code"
+                          icon="refresh"
+                          outline
+                          color="grey-7"
+                          no-caps
+                          class="full-width"
+                          @click="regenerateQR"
+                          :loading="regeneratingQR"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+                
+                <q-separator />
+                
+                <q-card-section>
+                  <q-toggle 
+                    v-model="requireApproval" 
+                    label="Require admin approval for new members"
+                    color="primary"
+                    @update:model-value="updateApprovalSetting"
+                  />
+                </q-card-section>
+              </q-card>
+            </div>
+          </q-tab-panel>
+
+          <!-- AI Monitoring Tab -->
+          <q-tab-panel name="ai" class="q-pa-none">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="row items-center q-mb-md">
+                  <q-icon name="psychology" size="sm" class="q-mr-sm" color="primary" />
+                  <div class="text-h6">AI Monitoring Preferences</div>
+                </div>
+                <div class="text-caption text-grey-7 q-mb-lg">
+                  Customize how the AI proactively monitors your gym schedule for problems
+                </div>
+
+                <!-- Alert Severity -->
+                <div class="q-mb-lg">
+                  <div class="text-subtitle1 q-mb-sm">Alert Severity</div>
+                  <q-option-group
+                    v-model="aiPrefs.severityFilter"
+                    :options="[
+                      { label: '🚨 Critical Only - Urgent issues requiring immediate attention', value: 'critical' },
+                      { label: '⚠️ Critical + Warnings - Most scheduling issues (recommended)', value: 'warning' },
+                      { label: 'ℹ️ All Alerts - Including informational messages', value: 'all' }
+                    ]"
+                    color="primary"
+                  />
+                </div>
+
+                <q-separator class="q-my-lg" />
+
+                <!-- Check Frequency -->
+                <div class="q-mb-lg">
+                  <div class="text-subtitle1 q-mb-sm">Check Frequency</div>
+                  <div class="text-caption text-grey-7 q-mb-md">
+                    How often should the AI scan for scheduling problems?
+                  </div>
+                  <div class="row items-center q-gutter-md">
+                    <div class="col">
+                      <q-slider
+                        v-model="aiPrefs.checkIntervalMinutes"
+                        :min="1"
+                        :max="30"
+                        :step="1"
+                        label
+                        label-always
+                        :label-value="`${aiPrefs.checkIntervalMinutes} min`"
+                        color="primary"
+                        markers
+                        marker-labels
+                      />
+                    </div>
+                    <div class="col-auto">
+                      <q-chip color="primary" text-color="white" icon="schedule">
+                        Every {{ aiPrefs.checkIntervalMinutes }} min
+                      </q-chip>
+                    </div>
                   </div>
                 </div>
-                <div v-else class="q-pa-md">
-                  <q-spinner-hourglass color="primary" size="50px" />
-                  <div class="text-caption q-mt-sm">Loading QR code...</div>
+
+                <q-separator class="q-my-lg" />
+
+                <!-- Notification Preferences -->
+                <div class="q-mb-lg">
+                  <div class="text-subtitle1 q-mb-sm">Notification Methods</div>
+                  <div class="text-caption text-grey-7 q-mb-md">
+                    How should you be notified about new problems?
+                  </div>
+                  <div class="q-gutter-sm">
+                    <q-checkbox 
+                      v-model="aiPrefs.browserNotifications" 
+                      label="Browser Notifications"
+                      color="primary"
+                    >
+                      <q-tooltip>Requires browser permission</q-tooltip>
+                    </q-checkbox>
+                    <q-checkbox 
+                      v-model="aiPrefs.soundAlerts" 
+                      label="Sound Alert"
+                      color="primary"
+                    />
+                    <q-checkbox 
+                      v-model="aiPrefs.emailDigest" 
+                      label="Daily Email Summary"
+                      color="primary"
+                    />
+                  </div>
+                </div>
+
+                <q-separator class="q-my-lg" />
+
+                <!-- Problem Types -->
+                <div class="q-mb-lg">
+                  <div class="text-subtitle1 q-mb-sm">Problem Types to Monitor</div>
+                  <div class="text-caption text-grey-7 q-mb-md">
+                    Select which types of issues the AI should detect
+                  </div>
+                  <div class="q-gutter-sm">
+                    <q-checkbox 
+                      v-model="aiPrefs.monitorTypes.noInstructor" 
+                      label="Classes without assigned instructors"
+                      color="primary"
+                    />
+                    <q-checkbox 
+                      v-model="aiPrefs.monitorTypes.overCapacity" 
+                      label="Over-capacity classes (too many RSVPs)"
+                      color="primary"
+                    />
+                    <q-checkbox 
+                      v-model="aiPrefs.monitorTypes.conflicts" 
+                      label="Instructor scheduling conflicts"
+                      color="primary"
+                    />
+                    <q-checkbox 
+                      v-model="aiPrefs.monitorTypes.cancelled" 
+                      label="Cancelled classes with active RSVPs"
+                      color="primary"
+                    />
+                  </div>
+                </div>
+
+                <q-separator class="q-my-lg" />
+
+                <!-- Quiet Hours -->
+                <div class="q-mb-lg">
+                  <div class="text-subtitle1 q-mb-sm">Quiet Hours</div>
+                  <div class="text-caption text-grey-7 q-mb-md">
+                    Silence notifications during specific hours (monitoring continues)
+                  </div>
+                  <q-toggle 
+                    v-model="aiPrefs.quietHours.enabled" 
+                    label="Enable Quiet Hours" 
+                    color="primary"
+                    class="q-mb-md"
+                  />
+                  <div v-if="aiPrefs.quietHours.enabled" class="row q-gutter-md items-center">
+                    <q-input 
+                      v-model="aiPrefs.quietHours.start" 
+                      type="time" 
+                      label="From" 
+                      filled
+                      dense
+                      style="max-width: 150px"
+                    />
+                    <q-icon name="arrow_forward" />
+                    <q-input 
+                      v-model="aiPrefs.quietHours.end" 
+                      type="time" 
+                      label="To" 
+                      filled
+                      dense
+                      style="max-width: 150px"
+                    />
+                    <q-chip color="grey-3" text-color="grey-8" icon="bedtime">
+                      {{ formatTime(aiPrefs.quietHours.start) }} - {{ formatTime(aiPrefs.quietHours.end) }}
+                    </q-chip>
+                  </div>
+                </div>
+
+                <q-separator class="q-my-lg" />
+
+                <!-- Widget Behavior -->
+                <div>
+                  <div class="text-subtitle1 q-mb-sm">Widget Behavior</div>
+                  <q-checkbox 
+                    v-model="aiPrefs.autoExpand" 
+                    label="Auto-expand widget when new alerts appear" 
+                    color="primary"
+                  />
+                </div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-actions align="right">
+                <q-btn 
+                  label="Reset to Defaults" 
+                  flat 
+                  color="grey-7"
+                  no-caps
+                  @click="resetAIPreferences"
+                />
+                <q-btn 
+                  label="Save Preferences" 
+                  color="primary" 
+                  unelevated
+                  no-caps
+                  icon="save"
+                  @click="saveAIPreferences"
+                  :loading="savingAIPrefs"
+                />
+              </q-card-actions>
+            </q-card>
+          </q-tab-panel>
+
+          <!-- Permissions Tab -->
+          <q-tab-panel name="permissions" class="q-pa-none">
+            <div class="q-gutter-md">
+              <!-- Messaging Rules -->
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <q-icon name="chat" size="sm" class="q-mr-sm" color="primary" />
+                    <div class="text-h6">Messaging Rules</div>
+                  </div>
+                  
+                  <div class="q-gutter-md">
+                    <div>
+                      <q-toggle
+                        v-model="settings.studentsCanMessage"
+                        label="Students can message each other directly"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        Allow students to start 1-on-1 chats
+                      </div>
+                    </div>
+
+                    <div>
+                      <q-toggle
+                        v-model="settings.studentsCanCreateGroups"
+                        label="Students can create group chats"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        Allow students to create study/training groups
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+                
+                <q-separator />
+                
+                <q-card-actions align="right">
+                  <q-btn 
+                    label="Save Changes" 
+                    color="primary" 
+                    unelevated
+                    no-caps
+                    icon="save"
+                    @click="saveSettings"
+                    :loading="savingSettings"
+                  />
+                </q-card-actions>
+              </q-card>
+
+              <!-- Schedule Permissions -->
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <q-icon name="event" size="sm" class="q-mr-sm" color="primary" />
+                    <div class="text-h6">Schedule Permissions</div>
+                  </div>
+                  
+                  <div class="q-gutter-md">
+                    <div>
+                      <q-toggle
+                        v-model="settings.autoNoteOnOverfullOrUnrsvp"
+                        label="Auto-note for walk-ins and over-capacity check-ins"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        Automatically create instructor note for students checking in without RSVP or when class is full
+                      </div>
+                    </div>
+
+                    <div>
+                      <q-toggle
+                        v-model="settings.instructorsCanCreateClasses"
+                        label="Instructors can create new classes"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        Allow instructors to add classes to the schedule
+                      </div>
+                    </div>
+
+                    <div>
+                      <q-toggle
+                        v-model="settings.instructorsEditOwnOnly"
+                        label="Instructors can only edit their own classes"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        Restrict instructors from modifying other instructors' classes
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+                
+                <q-separator />
+                
+                <q-card-actions align="right">
+                  <q-btn 
+                    label="Save Changes" 
+                    color="primary" 
+                    unelevated
+                    no-caps
+                    icon="save"
+                    @click="saveSettings"
+                    :loading="savingSettings"
+                  />
+                </q-card-actions>
+              </q-card>
+
+              <!-- AI Features -->
+              <q-card flat bordered>
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <q-icon name="auto_awesome" size="sm" class="q-mr-sm" color="primary" />
+                    <div class="text-h6">AI Assistant Features</div>
+                  </div>
+                  
+                  <div class="q-gutter-md">
+                    <div>
+                      <q-toggle
+                        v-model="settings.aiEnabled"
+                        label="Enable AI Assistant for all roles"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        AI can answer questions, provide recommendations, and help with RSVPs
+                      </div>
+                    </div>
+
+                    <div>
+                      <q-toggle
+                        v-model="settings.aiAutoRespond"
+                        label="AI can auto-suggest responses to common questions"
+                        color="primary"
+                      />
+                      <div class="text-caption text-grey-7 q-ml-xl">
+                        AI will automatically suggest answers to frequently asked questions
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+                
+                <q-separator />
+                
+                <q-card-actions align="right">
+                  <q-btn 
+                    label="Save Changes" 
+                    color="primary" 
+                    unelevated
+                    no-caps
+                    icon="save"
+                    @click="saveSettings"
+                    :loading="savingSettings"
+                  />
+                </q-card-actions>
+              </q-card>
+            </div>
+          </q-tab-panel>
+
+          <!-- Member Requests Tab -->
+          <q-tab-panel name="members" class="q-pa-none">
+            <q-card flat bordered>
+              <q-card-section>
+                <div class="row items-center q-mb-md">
+                  <q-icon name="how_to_reg" size="sm" class="q-mr-sm" color="primary" />
+                  <div class="text-h6">Pending Member Requests</div>
                 </div>
                 
-                <div class="q-mt-md q-gutter-sm">
-                  <q-btn
-                    label="Print Flyer"
-                    icon="print"
-                    color="primary"
-                    unelevated
-                    @click="showPrintDialog = true"
-                    :disable="!qrCodeURL"
-                  />
-                  <q-btn
-                    label="Download QR"
-                    icon="download"
-                    outline
-                    color="primary"
-                    @click="downloadQR"
-                    :disable="!qrCodeURL"
-                  />
-                  <q-btn
-                    label="Regenerate"
-                    icon="refresh"
-                    outline
-                    color="primary"
-                    @click="regenerateQR"
-                    :loading="regeneratingQR"
+                <div v-if="!requireApproval" class="text-center q-pa-xl text-grey-7">
+                  <q-icon name="lock_open" size="lg" />
+                  <div class="q-mt-md text-body1">Auto-approval is enabled</div>
+                  <div class="text-caption">New members join automatically without admin approval</div>
+                  <q-btn 
+                    label="Enable Approval Required" 
+                    color="primary" 
+                    flat
+                    no-caps
+                    class="q-mt-md"
+                    @click="requireApproval = true; updateApprovalSetting()"
                   />
                 </div>
-              </div>
-              
-              <q-separator class="q-my-md" />
-              
-              <q-toggle 
-                v-model="requireApproval" 
-                label="Require admin approval for new members"
-                @update:model-value="updateApprovalSetting"
-              />
-              
-              <!-- Pending Requests -->
-              <div v-if="requireApproval && pendingRequests.length > 0" class="q-mt-md">
-                <div class="text-subtitle2 q-mb-md">Pending Join Requests ({{ pendingRequests.length }})</div>
-                <q-list bordered separator>
+
+                <div v-else-if="pendingRequests.length === 0" class="text-center q-pa-xl text-grey-7">
+                  <q-icon name="check_circle" size="lg" color="positive" />
+                  <div class="q-mt-md text-body1">No pending requests</div>
+                  <div class="text-caption">All member requests have been processed</div>
+                </div>
+
+                <q-list v-else bordered separator>
                   <q-item v-for="request in pendingRequests" :key="request.id">
                     <q-item-section avatar>
-                      <q-avatar>
+                      <q-avatar size="48px">
                         <img v-if="request.profiles?.avatar_url" :src="request.profiles.avatar_url" />
-                        <q-icon v-else name="person" />
+                        <q-icon v-else name="person" size="md" />
                       </q-avatar>
                     </q-item-section>
                     <q-item-section>
-                      <q-item-label>{{ request.profiles?.name || 'Unknown' }}</q-item-label>
-                      <q-item-label caption>{{ request.profiles?.email }}</q-item-label>
+                      <q-item-label class="text-weight-medium">
+                        {{ request.profiles?.name || 'Unknown' }}
+                      </q-item-label>
+                      <q-item-label caption>
+                        {{ request.profiles?.email }}
+                      </q-item-label>
                       <q-item-label caption class="text-grey-6">
+                        <q-icon name="schedule" size="xs" />
                         Requested {{ formatDate(request.created_at) }}
                       </q-item-label>
                     </q-item-section>
                     <q-item-section side>
-                      <div class="q-gutter-xs">
+                      <div class="row q-gutter-sm">
                         <q-btn
+                          label="Approve"
                           color="positive"
                           icon="check"
-                          round
-                          dense
+                          unelevated
+                          no-caps
                           @click="approveRequest(request.id)"
-                        >
-                          <q-tooltip>Approve</q-tooltip>
-                        </q-btn>
+                        />
                         <q-btn
+                          label="Reject"
                           color="negative"
                           icon="close"
-                          round
-                          dense
+                          outline
+                          no-caps
                           @click="rejectRequest(request.id)"
-                        >
-                          <q-tooltip>Reject</q-tooltip>
-                        </q-btn>
+                        />
                       </div>
                     </q-item-section>
                   </q-item>
                 </q-list>
-              </div>
-            </q-card-section>
-          </q-expansion-item>
-        </q-card>
-
-        <!-- Messaging Rules -->
-        <q-card>
-          <q-card-section>
-            <div class="text-h6 q-mb-md">Messaging Rules</div>
-            
-            <q-toggle
-              v-model="settings.studentsCanMessage"
-              label="Students can message each other directly"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              When enabled, students can start 1-on-1 chats with other students
-            </div>
-
-            <q-toggle
-              v-model="settings.studentsCanCreateGroups"
-              label="Students can create group chats"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              When enabled, students can create their own study/training groups
-            </div>
-
-            <q-btn
-              label="Save Messaging Rules"
-              color="primary"
-              class="q-mt-md"
-              @click="saveSettings"
-              :loading="savingSettings"
-            />
-          </q-card-section>
-        </q-card>
-
-        <!-- Schedule Permissions -->
-        <q-card>
-          <q-card-section>
-            <div class="text-h6 q-mb-md">Schedule Permissions</div>
-            
-            <q-toggle
-              v-model="settings.autoNoteOnOverfullOrUnrsvp"
-              label="Auto-create instructor note for walk-ins or full-class check-ins"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              When enabled, checking in without RSVP or when class is at capacity will add an instructor note automatically.
-            </div>
-
-            <q-toggle
-              v-model="settings.instructorsCanCreateClasses"
-              label="Instructors can create new classes"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              When enabled, instructors can add classes to the schedule
-            </div>
-
-            <q-toggle
-              v-model="settings.instructorsEditOwnOnly"
-              label="Instructors can only edit their own classes"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              When enabled, instructors cannot modify other instructors' classes
-            </div>
-
-            <q-btn
-              label="Save Schedule Permissions"
-              color="primary"
-              class="q-mt-md"
-              @click="saveSettings"
-              :loading="savingSettings"
-            />
-          </q-card-section>
-        </q-card>
-
-        <!-- AI Features -->
-        <q-card>
-          <q-card-section>
-            <div class="text-h6 q-mb-md">AI Features</div>
-            
-            <q-toggle
-              v-model="settings.aiEnabled"
-              label="Enable AI Assistant for all roles"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              AI can answer schedule questions, provide recommendations, and help with RSVPs
-            </div>
-
-            <q-toggle
-              v-model="settings.aiAutoRespond"
-              label="AI can auto-respond to common schedule questions"
-              class="q-mb-sm"
-            />
-            <div class="text-caption text-grey-7 q-ml-xl q-mb-md">
-              AI will automatically suggest answers to frequently asked questions
-            </div>
-
-            <q-btn
-              label="Save AI Settings"
-              color="primary"
-              class="q-mt-md"
-              @click="saveSettings"
-              :loading="savingSettings"
-            />
-          </q-card-section>
-        </q-card>
+              </q-card-section>
+            </q-card>
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
     </div>
 
@@ -373,30 +715,32 @@
           <q-input
             v-model="newGymForm.name"
             label="Gym Name"
-            outlined
+            filled
             class="q-mb-md"
+            :rules="[val => val && val.length > 0 || 'Name is required']"
           />
 
           <div class="text-subtitle2 q-mb-sm">Initial Location</div>
           <q-input
             v-model="newGymForm.locationName"
             label="Location Name"
-            outlined
+            filled
             class="q-mb-md"
           />
           <q-input
             v-model="newGymForm.locationAddress"
             label="Address"
-            outlined
+            filled
           />
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn flat label="Cancel" no-caps v-close-popup />
           <q-btn 
             label="Create Gym" 
             color="primary"
             unelevated
+            no-caps
             :loading="creatingGym"
             :disable="!newGymForm.name || !newGymForm.locationName || !newGymForm.locationAddress"
             @click="createNewGym"
@@ -417,28 +761,15 @@
         <q-card-section>
           <div id="print-flyer" class="print-flyer">
             <div class="text-center q-pa-xl">
-              <!-- Gym Name -->
               <h1 class="text-h3 q-mb-md" style="color: #1976D2;">{{ gym?.name || 'Join Our Gym' }}</h1>
-              
-              <!-- Tagline -->
-              <p class="text-h6 text-grey-7 q-mb-xl">
-                Scan the QR code to join our community
-              </p>
-              
-              <!-- QR Code -->
+              <p class="text-h6 text-grey-7 q-mb-xl">Scan the QR code to join our community</p>
               <div class="q-mb-xl">
                 <img :src="qrCodeURL" alt="Join QR Code" style="width: 400px; height: 400px;" />
               </div>
-              
-              <!-- Join URL -->
               <div class="q-mb-lg">
                 <div class="text-subtitle2 text-grey-7 q-mb-sm">Or visit:</div>
-                <div class="text-h6 text-weight-bold" style="word-break: break-all;">
-                  {{ joinURL }}
-                </div>
+                <div class="text-h6 text-weight-bold" style="word-break: break-all;">{{ joinURL }}</div>
               </div>
-              
-              <!-- Locations -->
               <div v-if="gym?.locations && (gym.locations as any[]).length" class="q-mt-xl">
                 <div class="text-h6 q-mb-md">Our Locations</div>
                 <div v-for="(location, index) in (gym.locations as any[])" :key="index" class="q-mb-sm">
@@ -446,24 +777,14 @@
                   <div class="text-grey-7">{{ (location as any).address }}</div>
                 </div>
               </div>
-              
-              <!-- Footer -->
-              <div class="q-mt-xl text-caption text-grey-6">
-                Questions? Contact your gym administrator
-              </div>
+              <div class="q-mt-xl text-caption text-grey-6">Questions? Contact your gym administrator</div>
             </div>
           </div>
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn label="Cancel" flat v-close-popup />
-          <q-btn 
-            label="Print" 
-            color="primary" 
-            unelevated
-            icon="print"
-            @click="doPrint"
-          />
+          <q-btn label="Cancel" flat no-caps v-close-popup />
+          <q-btn label="Print" color="primary" unelevated no-caps icon="print" @click="doPrint" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -476,6 +797,7 @@ import { useGymSettings } from '../composables/useGymSettings';
 import { useGym } from '../composables/useGym';
 import { useGymSwitcher } from '../composables/useGymSwitcher';
 import { useGymQR } from '../composables/useGymQR';
+import { useAIPreferences } from '../composables/useAIPreferences';
 import { user } from '../state/auth';
 import { Notify } from 'quasar';
 
@@ -485,10 +807,13 @@ const { settings, fetchSettings, updateSettings } = useGymSettings(gymId.value);
 const { gym, fetchGym, updateGym } = useGym(gymId.value);
 const { ownedGyms, currentGymId, loadOwnedGyms, switchGym: switchToGym, createNewGym: createGym } = useGymSwitcher();
 const { generateQRCodeURL, regenerateQRToken, getPendingRequests, handleJoinRequest } = useGymQR();
+const { preferences: aiPrefs, loadPreferences: loadAIPrefs, savePreferences, resetToDefaults } = useAIPreferences();
 
+const activeTab = ref('general');
 const loading = ref(false);
 const savingSettings = ref(false);
 const savingDetails = ref(false);
+const savingAIPrefs = ref(false);
 
 const gymName = ref('');
 const locations = ref<Array<{ name: string; address: string }>>([]);
@@ -535,7 +860,8 @@ async function saveGymDetails() {
 
     Notify.create({
       type: 'positive',
-      message: 'Gym details updated successfully'
+      message: 'Gym details updated successfully',
+      icon: 'check_circle'
     });
   } catch (err) {
     console.error('Error saving gym details:', err);
@@ -558,7 +884,8 @@ async function saveSettings() {
 
     Notify.create({
       type: 'positive',
-      message: 'Settings updated successfully'
+      message: 'Settings updated successfully',
+      icon: 'check_circle'
     });
   } catch (err) {
     console.error('Error saving settings:', err);
@@ -571,6 +898,56 @@ async function saveSettings() {
   }
 }
 
+// AI Preferences Functions
+async function saveAIPreferences() {
+  savingAIPrefs.value = true;
+  try {
+    await savePreferences(aiPrefs.value);
+    
+    Notify.create({
+      type: 'positive',
+      message: 'AI monitoring preferences saved',
+      caption: 'Changes will take effect immediately',
+      icon: 'psychology'
+    });
+  } catch (err) {
+    console.error('Error saving AI preferences:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to save AI preferences'
+    });
+  } finally {
+    savingAIPrefs.value = false;
+  }
+}
+
+async function resetAIPreferences() {
+  try {
+    await resetToDefaults();
+    
+    Notify.create({
+      type: 'info',
+      message: 'AI preferences reset to defaults',
+      icon: 'restart_alt'
+    });
+  } catch (err) {
+    console.error('Error resetting AI preferences:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to reset preferences'
+    });
+  }
+}
+
+function formatTime(time: string): string {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
 async function loadData() {
   loading.value = true;
 
@@ -578,6 +955,7 @@ async function loadData() {
     await fetchGym(gymId.value);
     await fetchSettings(gymId.value);
     await loadOwnedGyms();
+    await loadAIPrefs();
 
     if (gym.value) {
       gymName.value = gym.value.name || '';
@@ -595,9 +973,9 @@ async function switchGym(gymId: string) {
     await switchToGym(gymId);
     Notify.create({
       type: 'positive',
-      message: 'Switched gym successfully'
+      message: 'Switched gym successfully',
+      icon: 'swap_horiz'
     });
-    // Reload data for new gym
     void loadData();
   } catch (err) {
     console.error('Error switching gym:', err);
@@ -623,11 +1001,11 @@ async function createNewGym() {
     if (result.success) {
       Notify.create({
         type: 'positive',
-        message: `${result.gym.name} created successfully!`
+        message: `${result.gym.name} created successfully!`,
+        icon: 'add_business'
       });
       showCreateGymDialog.value = false;
       newGymForm.value = { name: '', locationName: '', locationAddress: '' };
-      // Reload data for new gym
       void loadData();
     }
   } catch (err) {
@@ -663,7 +1041,8 @@ async function regenerateQR() {
     await loadQRCode();
     Notify.create({
       type: 'positive',
-      message: 'QR code regenerated successfully'
+      message: 'QR code regenerated successfully',
+      icon: 'refresh'
     });
   } catch (err) {
     console.error('Error regenerating QR:', err);
@@ -677,10 +1056,11 @@ async function regenerateQR() {
 }
 
 function copyJoinURL() {
-  navigator.clipboard.writeText(joinURL.value);
+  void navigator.clipboard.writeText(joinURL.value);
   Notify.create({
     type: 'positive',
     message: 'Join URL copied to clipboard',
+    icon: 'content_copy',
     timeout: 1000
   });
 }
@@ -726,8 +1106,12 @@ async function updateApprovalSetting() {
     await updateSettings(gymId.value, { ...settings.value, requireApproval: requireApproval.value });
     Notify.create({
       type: 'positive',
-      message: 'Approval setting updated'
+      message: 'Approval setting updated',
+      icon: 'verified_user'
     });
+    if (requireApproval.value) {
+      void loadPendingRequests();
+    }
   } catch (err) {
     console.error('Error updating approval setting:', err);
   }
@@ -748,7 +1132,8 @@ async function approveRequest(requestId: string) {
     await handleJoinRequest(requestId, 'approved');
     Notify.create({
       type: 'positive',
-      message: 'Member approved'
+      message: 'Member approved',
+      icon: 'check_circle'
     });
     await loadPendingRequests();
   } catch (err) {
@@ -765,7 +1150,8 @@ async function rejectRequest(requestId: string) {
     await handleJoinRequest(requestId, 'rejected');
     Notify.create({
       type: 'info',
-      message: 'Request rejected'
+      message: 'Request rejected',
+      icon: 'cancel'
     });
     await loadPendingRequests();
   } catch (err) {
@@ -797,4 +1183,3 @@ onMounted(() => {
   }
 }
 </style>
-

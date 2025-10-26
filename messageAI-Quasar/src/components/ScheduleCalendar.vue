@@ -75,6 +75,15 @@
                     {{ getClassTitle(schedule) }}
                   </span>
                   <q-badge v-if="schedule.is_cancelled" color="negative" label="CANCELLED" class="q-ml-xs" />
+                  <q-badge 
+                    v-if="hasAvailabilityConflict(schedule) && !schedule.is_cancelled" 
+                    color="warning" 
+                    text-color="dark"
+                    icon="warning" 
+                    class="q-ml-xs"
+                  >
+                    <q-tooltip>Instructor may not be available at this time</q-tooltip>
+                  </q-badge>
                   <q-space />
                   <q-btn
                     v-if="canEdit(schedule)"
@@ -91,7 +100,12 @@
                 <div class="text-caption class-time" :class="{ 'text-strike': schedule.is_cancelled }">
                   {{ formatTime(schedule.start_time) }} - {{ formatTime(schedule.end_time) }}
                 </div>
-                <div class="text-caption text-grey-7">{{ schedule.instructor_name }}</div>
+                <div 
+                  class="text-caption" 
+                  :class="hasAvailabilityConflict(schedule) ? 'text-warning' : 'text-grey-7'"
+                >
+                  {{ schedule.instructor_name || 'No instructor assigned' }}
+                </div>
                 <div class="text-caption">
                   <q-icon name="place" size="xs" /> {{ schedule.gym_location }}
                 </div>
@@ -404,6 +418,26 @@ function getCapacityColor(schedule: any) {
   if (ratio >= 1) return 'negative';
   if (ratio >= 0.8) return 'warning';
   return 'positive';
+}
+
+// Check if instructor has an availability conflict
+function hasAvailabilityConflict(schedule: any): boolean {
+  // If no instructor assigned, no conflict (that's a different problem)
+  if (!schedule.instructor_id) return false;
+  
+  // If we have instructor preferences stored in the schedule (from a join or eager load)
+  if (schedule.instructor_preferences) {
+    const prefs = schedule.instructor_preferences as any;
+    const dayLower = schedule.day_of_week?.toLowerCase();
+    
+    // Check if instructor has available_days set and this day isn't in it
+    if (prefs.available_days && Array.isArray(prefs.available_days) && prefs.available_days.length > 0) {
+      return !prefs.available_days.includes(dayLower);
+    }
+  }
+  
+  // Default: no conflict detected (either no prefs or prefs not loaded)
+  return false;
 }
 
 // Fun styling functions for class cards

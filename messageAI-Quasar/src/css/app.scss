@@ -99,3 +99,59 @@ h1, h2, h3, h4, h5, h6,
 .text-secondary-light {
   color: #b0b0b0 !important;
 }
+
+// Desktop width constraint - similar to modern apps like X/Twitter
+.app-max-width-container {
+  width: 100%;
+  
+  @media (min-width: 1024px) {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+// Add background color to page container for visual distinction on desktop
+.q-page-container {
+  @media (min-width: 1024px) {
+    background-color: #f5f5f5;
+  }
+}
+
+// Improved spacing utilities to prevent cramped layouts
+.q-page {
+  // Ensure pages have proper padding on mobile
+  padding: 16px;
+  
+  @media (min-width: 600px) {
+    padding: 20px;
+  }
+  
+  @media (min-width: 1024px) {
+    padding: 24px;
+  }
+}
+
+// Ensure cards and lists have proper spacing
+.q-card {
+  margin-bottom: 16px;
+}
+
+.q-list {
+  .q-item {
+    padding: 12px 16px;
+  }
+}
+
+// Better spacing for form elements
+.q-field {
+  margin-bottom: 16px;
+}
+
+// Improve toolbar spacing
+.q-toolbar {
+  padding: 8px 16px;
+  
+  @media (min-width: 1024px) {
+    padding: 12px 24px;
+  }
+}

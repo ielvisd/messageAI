@@ -228,7 +228,7 @@
 
             <q-item-section>
               <q-item-label class="text-weight-medium">
-                {{ chat.name }}
+                {{ getChatDisplayName(chat) }}
               </q-item-label>
               <q-item-label caption class="text-grey-6">
                 <span v-if="chat.last_message">
@@ -441,9 +441,11 @@
 
         <q-card-section>
           <q-form @submit="handleCreateChat">
+            <!-- Only show name input for group chats -->
             <q-input
+              v-if="actualChatType === 'group'"
               v-model="newChatName"
-              label="Chat Name"
+              label="Group Chat Name"
               :rules="[val => !!val || 'Name is required']"
               class="q-mb-md"
             />
@@ -454,6 +456,9 @@
               <div class="text-body1 text-primary">
                 <q-icon :name="chatTypeIcon" class="q-mr-xs" />
                 {{ chatTypeLabel }}
+              </div>
+              <div v-if="actualChatType === 'direct'" class="text-caption text-grey-6 q-mt-xs">
+                Chat name will be set automatically
               </div>
             </div>
 
@@ -616,6 +621,16 @@ const formatTime = (dateString: string) => {
   return date.toLocaleDateString()
 }
 
+// Get display name for chat (shows other person's name for DMs)
+const getChatDisplayName = (chat: Chat): string => {
+  if (chat.type === 'direct') {
+    // Find the other person in the chat
+    const otherPerson = chat.members?.find((m: any) => m.id !== user.value?.id)
+    return otherPerson?.name || 'Unknown'
+  }
+  return chat.name || `Group (${chat.members?.length || 0} members)`
+}
+
 // Handle accepting a chat request
 const handleAcceptRequest = async (requestId: string) => {
   processingRequest.value = requestId
@@ -695,8 +710,11 @@ const handleCreateChat = async () => {
     // Auto-detect chat type based on member count
     const detectedType = actualChatType.value
     
+    // For DMs, use empty name (display logic will show other person's name)
+    const chatName = detectedType === 'direct' ? '' : newChatName.value
+    
     console.log('🚀 Creating chat:', {
-      chatName: newChatName.value,
+      chatName,
       detectedType,
       memberCount: selectedMemberIds.value.length,
       memberIds: selectedMemberIds.value,
@@ -720,7 +738,7 @@ const handleCreateChat = async () => {
         // Send chat request for new 1:1 conversation
         const request = await createChatRequest(
           otherUserId,
-          newChatName.value,
+          chatName,
           initialMessage.value || `Hello! I'd like to start a conversation with you.`
         )
         
@@ -745,7 +763,7 @@ const handleCreateChat = async () => {
     }
     
     // For group chats (2+ members) or existing DM history, create directly
-    const chat = await createChat(newChatName.value, detectedType, selectedMemberIds.value)
+    const chat = await createChat(chatName, detectedType, selectedMemberIds.value)
 
     if (chat) {
       Notify.create({

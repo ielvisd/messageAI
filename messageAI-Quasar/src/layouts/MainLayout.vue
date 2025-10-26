@@ -123,27 +123,29 @@
     </q-drawer>
 
     <q-page-container>
-      <router-view />
+      <div class="app-max-width-container">
+        <router-view />
+      </div>
     </q-page-container>
     
-    <!-- AI Insights Widget (only for owners/instructors) -->
+    <!-- AI Insights Widget (only for owners/instructors) - MUST be inside QLayout -->
     <AIInsightsWidget v-if="userRole === 'owner' || userRole === 'instructor'" />
-    
-    <!-- Profile Picture Editor Dialog -->
-    <ProfilePictureEditor 
-      v-model="showProfileEditor"
-      :avatar-url="profile?.avatar_url"
-      @avatar-updated="handleAvatarUpdated"
-    />
   </q-layout>
+    
+  <!-- Profile Picture Editor Dialog - Can be outside QLayout -->
+  <ProfilePictureEditor 
+    v-model="showProfileEditor"
+    :avatar-url="profile?.avatar_url"
+    @avatar-updated="handleAvatarUpdated"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { isAuthenticated, signOut, user } from '../state/auth'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { isAuthenticated, signOut, user, profile as globalProfile } from '../state/auth'
 import { useRouter } from 'vue-router'
 import { supabase } from '../boot/supabase'
-import { usePresence } from '../composables/usePresence'
+import { usePresence, cleanupPresence } from '../composables/usePresence'
 import { usePushNotifications } from '../composables/usePushNotifications'
 import ProfilePictureEditor from '../components/ProfilePictureEditor.vue'
 import AIInsightsWidget from '../components/AIInsightsWidget.vue'
@@ -155,6 +157,11 @@ usePresence()
 // Initialize push notifications (registers for push on native platforms)
 usePushNotifications()
 
+// Cleanup presence when app closes
+onUnmounted(() => {
+  void cleanupPresence()
+})
+
 const router = useRouter()
 
 const leftDrawerOpen = ref(false)
@@ -164,7 +171,8 @@ const profile = ref<{ name?: string; email?: string; avatar_url?: string; role?:
 )
 const gymName = ref<string>('')
 
-const userRole = computed(() => (user.value as any)?.role || profile.value?.role || null)
+// Use global profile from auth state for role check (loaded earlier than local profile)
+const userRole = computed(() => globalProfile.value?.role || profile.value?.role || null)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value

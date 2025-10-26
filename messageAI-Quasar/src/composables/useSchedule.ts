@@ -21,6 +21,7 @@ interface Schedule {
   level?: string
   notes?: string
   is_active?: boolean
+  instructor_preferences?: any
 }
 
 export function useSchedule() {
@@ -56,7 +57,12 @@ export function useSchedule() {
 
       let query = supabase
         .from('gym_schedules')
-        .select('*')
+        .select(`
+          *,
+          profiles!gym_schedules_instructor_id_fkey (
+            instructor_preferences
+          )
+        `)
         .order('start_time', { ascending: true })
 
       if (filters?.gym_id) {
@@ -69,7 +75,14 @@ export function useSchedule() {
       const { data, error: fetchError } = await query
 
       if (fetchError) throw fetchError
-      schedules.value = data || []
+      
+      // Flatten the instructor preferences into the schedule object
+      const flattenedData = (data || []).map((schedule: any) => ({
+        ...schedule,
+        instructor_preferences: schedule.profiles?.instructor_preferences || null
+      }))
+      
+      schedules.value = flattenedData
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch schedules'
       console.error('Error fetching schedules:', err)

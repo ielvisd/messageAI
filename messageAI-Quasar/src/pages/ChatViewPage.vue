@@ -1,5 +1,5 @@
 <template>
-  <q-page class="column">
+  <q-page class="column no-padding">
     <!-- Chat Header -->
     <div class="row items-center q-pa-md bg-white shadow-1">
       <q-btn
@@ -15,27 +15,12 @@
         :icon="chatInfo?.type === 'group' ? 'group' : 'person'"
         class="q-mr-md"
       >
-        <img v-if="chatInfo?.type === 'direct' && chatInfo.members[0]?.avatar_url" :src="chatInfo.members[0].avatar_url" />
-        <!-- Online status indicator -->
-        <q-badge 
-          v-if="chatInfo?.type === 'direct' && chatInfo.members[0]"
-          :color="isUserOnline(chatInfo.members[0].id) ? 'positive' : 'grey-5'"
-          floating
-          rounded
-          style="width: 12px; height: 12px; bottom: 2px; right: 2px;"
-        >
-          <q-tooltip>{{ isUserOnline(chatInfo.members[0].id) ? 'Online' : 'Offline' }}</q-tooltip>
-        </q-badge>
+        <img v-if="chatInfo?.type === 'direct' && otherUser?.avatar_url" :src="otherUser.avatar_url" />
       </q-avatar>
       <div class="col">
-        <div class="text-h6">{{ chatInfo?.name || 'Loading...' }}</div>
-        <div class="text-caption text-grey-6">
-          <span v-if="chatInfo?.type === 'direct' && chatInfo.members[0]">
-            {{ chatInfo.members[0].name }}
-          </span>
-          <span v-else-if="chatInfo?.type === 'group'">
-            {{ chatInfo.members.length }} members
-          </span>
+        <div class="text-h6">{{ displayName }}</div>
+        <div class="text-caption" :class="isUserOnline(otherUserId || '') ? 'text-positive' : 'text-grey-6'">
+          {{ presenceStatus }}
         </div>
       </div>
       <!-- Media Gallery Button -->
@@ -440,7 +425,7 @@ const {
   getReadByUsers
 } = useChat(chatId)
 
-// Presence system
+// Presence system (singleton - already initialized in MainLayout)
 const { isUserOnline } = usePresence()
 
 // Blocking system
@@ -451,13 +436,67 @@ const showChatMenu = ref(false)
 const showMediaPicker = ref(false)
 const showMediaGallery = ref(false)
 
-// For direct chats, get the other user's ID
-const otherUserId = computed(() => {
+// For direct chats, get the other user
+const otherUser = computed(() => {
   if (chatInfo.value?.type === 'direct' && chatInfo.value.members) {
-    const otherMember = chatInfo.value.members.find((m: any) => m.id !== user.value?.id)
-    return otherMember?.id || null
+    return chatInfo.value.members.find((m: any) => m.id !== user.value?.id) || null
   }
   return null
+})
+
+// For direct chats, get the other user's ID
+const otherUserId = computed(() => otherUser.value?.id || null)
+
+// Display name for the chat
+const displayName = computed(() => {
+  if (!chatInfo.value) return 'Loading...'
+  
+  if (chatInfo.value.type === 'direct') {
+    // Show the OTHER person's name for DMs
+    return otherUser.value?.name || 'Unknown'
+  }
+  
+  // Show group name or member count for groups
+  return chatInfo.value.name || `Group (${chatInfo.value.members?.length || 0} members)`
+})
+
+// Helper function to format last seen time
+function formatLastSeen(lastSeenAt: string): string {
+  const now = new Date()
+  const lastSeen = new Date(lastSeenAt)
+  const diffMs = now.getTime() - lastSeen.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  
+  if (diffMins < 1) return 'Online now'
+  if (diffMins < 60) return `Last seen ${diffMins}m ago`
+  
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `Last seen ${diffHours}h ago`
+  
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return 'Last seen yesterday'
+  if (diffDays < 7) return `Last seen ${diffDays}d ago`
+  
+  return 'Last seen recently'
+}
+
+// Presence status text for the chat header
+const presenceStatus = computed(() => {
+  if (!chatInfo.value || chatInfo.value.type !== 'direct') {
+    // For group chats, show member count
+    return `${chatInfo.value?.members?.length || 0} members`
+  }
+  
+  if (!otherUser.value) return ''
+  
+  // Check if user is currently online
+  if (isUserOnline(otherUser.value.id)) {
+    return 'Online now'
+  }
+  
+  // TODO: Query last_seen_at from database for "Last seen X ago"
+  // For now, just show offline
+  return 'Offline'
 })
 
 // Get last message for smart replies
@@ -564,6 +603,11 @@ watch(messages, () => {
 </script>
 
 <style scoped>
+/* Override global padding for chat page - needs edge-to-edge layout */
+.q-page.no-padding {
+  padding: 0 !important;
+}
+
 .message-bubble {
   word-wrap: break-word;
   word-break: break-word;

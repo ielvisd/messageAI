@@ -1,5 +1,5 @@
 <template>
-  <q-page class="column ai-assistant-page">
+  <q-page class="column ai-assistant-page no-padding">
     <!-- Header -->
     <div class="row items-center q-pa-md bg-deep-black text-white shadow-2">
       <q-btn
@@ -74,7 +74,24 @@
               class="markdown-content text-body1" 
               style="line-height: 1.7; font-size: 15px;"
               v-html="renderMarkdown(message.content)"
+              @click="handleMessageClick($event)"
             ></div>
+            
+            <!-- Suggested Actions -->
+            <div v-if="message.suggested_actions && message.suggested_actions.length > 0" class="q-mt-md q-gutter-xs">
+              <q-btn
+                v-for="(action, idx) in message.suggested_actions"
+                :key="`${index}-action-${idx}`"
+                :label="action.label"
+                :icon="action.icon"
+                :color="action.color"
+                size="sm"
+                unelevated
+                @click="handleActionClick(action)"
+                class="action-button"
+              />
+            </div>
+            
             <div
               class="text-caption q-mt-xs"
               :class="message.role === 'user' ? 'timestamp-user' : 'timestamp-assistant'"
@@ -175,21 +192,32 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useGymAI } from '../composables/useGymAI';
 import { useVoiceInput } from '../composables/useVoiceInput';
-import { profile } from '../state/auth';
-import { Notify } from 'quasar';
+import { profile, user } from '../state/auth';
+import { Notify, Dialog } from 'quasar';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { supabase } from '../boot/supabase';
+import InstructorDetailsDialog from '../components/InstructorDetailsDialog.vue';
+import { useChatList } from '../composables/useChatList';
+import { useChatRequests } from '../composables/useChatRequests';
 
+const router = useRouter();
+const route = useRoute();
+const { createChat } = useChatList();
+const { checkExistingChatHistory } = useChatRequests();
 const gymId = computed(() => profile.value?.gym_id || null);
 
 const {
   messages,
   loading,
   error,
+  conversationId,
   sendMessage,
-  initialize
+  initialize,
+  executeTool
 } = useGymAI();
 
 const { 
@@ -213,12 +241,20 @@ marked.setOptions({
   gfm: true,
 });
 
-// Function to safely render markdown
+// Function to safely render markdown with clickable instructor names
 function renderMarkdown(content: string): string {
-  const rawHtml = marked.parse(content) as string;
+  let rawHtml = marked.parse(content) as string;
+  
+  // Convert instructor names to clickable links
+  // Pattern: "Coach Ana Rodriguez", "Professor Carlos Martinez", etc.
+  rawHtml = rawHtml.replace(
+    /(Coach|Professor|Instructor)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g,
+    '<span class="instructor-link" data-instructor="$1 $2">$1 $2</span>'
+  );
+  
   return DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote'],
-    ALLOWED_ATTR: ['href', 'target', 'rel']
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'data-instructor']
   });
 }
 
@@ -294,21 +330,258 @@ function toggleVoice() {
 }
 
 function startNewConversation() {
+  // Clear conversation state temporarily (UI only)
+  // Page refresh will reload the last conversation from DB
+  // Next message will create a new conversation in DB
+  conversationId.value = null;
   messages.value = [];
+  
+  console.log('🆕 Cleared AI conversation UI (page refresh will restore last conversation)');
+  
   Notify.create({
-    type: 'info',
-    message: 'Started new conversation'
+    type: 'positive',
+    message: 'Conversation cleared. Refresh to restore, or start chatting fresh.',
+    icon: 'chat',
+    timeout: 2500
   });
 }
 
+// Handle clicks on instructor names in messages
+function handleMessageClick(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  
+  if (target.classList.contains('instructor-link')) {
+    const instructorName = target.getAttribute('data-instructor');
+    if (instructorName) {
+      void showInstructorModal(instructorName);
+    }
+  }
+}
+
+// Show instructor quick info modal
+async function showInstructorModal(instructorName: string) {
+  if (!gymId.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'No gym selected'
+    });
+    return;
+  }
+
+  // Fetch instructor details from database
+  const { data: instructor, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, role, instructor_preferences, avatar_url')
+    .ilike('name', instructorName)
+    .eq('gym_id', gymId.value)
+    .single();
+  
+  if (error || !instructor) {
+    Notify.create({
+      type: 'warning',
+      message: 'Instructor not found in the system'
+    });
+    return;
+  }
+  
+  // Show custom dialog component
+  Dialog.create({
+    component: InstructorDetailsDialog,
+    componentProps: {
+      instructor
+    }
+  }).onOk((result: { action: string; instructorId: string }) => {
+    // Handle dialog actions
+    if (result.action === 'dm') {
+      void navigateToDM(result.instructorId);
+    } else if (result.action === 'schedule') {
+      void viewInstructorSchedule(result.instructorId);
+    }
+  });
+}
+
+// Navigate to DM with instructor
+async function navigateToDM(instructorId: string) {
+  if (!user.value) {
+    Notify.create({
+      type: 'warning',
+      message: 'Please log in to send messages'
+    });
+    return;
+  }
+
+  try {
+    // Check if chat already exists with this instructor
+    const hasExistingChat = await checkExistingChatHistory(user.value.id, instructorId);
+    
+    if (hasExistingChat) {
+      // Find the existing chat and navigate to it
+      const { data: chats, error } = await supabase
+        .from('chat_members')
+        .select('chat_id, chats!inner(id, type)')
+        .eq('user_id', user.value.id);
+      
+      if (error) throw error;
+      
+      // Find chat where both users are members
+      for (const chatMember of chats || []) {
+        const { data: members } = await supabase
+          .from('chat_members')
+          .select('user_id')
+          .eq('chat_id', chatMember.chat_id);
+        
+        const memberIds = members?.map(m => m.user_id) || [];
+        if (memberIds.includes(instructorId) && memberIds.includes(user.value.id)) {
+          await router.push(`/chat/${chatMember.chat_id}`);
+          return;
+        }
+      }
+    }
+    
+    // No existing chat, create new DM
+    const newChat = await createChat('', 'direct', [instructorId]);
+    
+    if (newChat) {
+      Notify.create({
+        type: 'positive',
+        message: 'Chat created successfully!'
+      });
+      await router.push(`/chat/${newChat.id}`);
+    } else {
+      throw new Error('Failed to create chat');
+    }
+  } catch (error) {
+    console.error('Error with DM navigation:', error);
+    Notify.create({
+      type: 'negative',
+      message: error instanceof Error ? error.message : 'Failed to create or open chat'
+    });
+  }
+}
+
+// View instructor's schedule
+async function viewInstructorSchedule(instructorId: string) {
+  // Navigate to schedule page with instructor filter
+  await router.push({
+    path: '/schedule',
+    query: { instructor: instructorId }
+  });
+}
+
+// Handle action button clicks - Fill input and auto-send
+async function handleActionClick(action: any) {
+  console.log('🎬 Handling action:', action);
+  
+  let prompt = '';
+  
+  // Generate the perfect prompt based on action type
+  switch (action.type) {
+    case 'assign_instructor':
+      prompt = `Yes, assign ${action.params.instructor_name} to this class.`;
+      break;
+    case 'message_instructors':
+      prompt = 'I want to message the instructors about this.';
+      break;
+    case 'reschedule_class':
+      prompt = 'I want to reschedule this class to a better time.';
+      break;
+    case 'cancel_class':
+      prompt = 'Please cancel this class and notify anyone who has RSVPed.';
+      break;
+    default:
+      console.warn('Unknown action type:', action.type);
+      return;
+  }
+  
+  // Fill the input and auto-send
+  newMessage.value = prompt;
+  await handleSendMessage();
+}
+
+// Extracted function to handle fresh sessions and alert context
+function handleFreshSessionAndAlerts() {
+  // Check if we should start a fresh conversation (from alert click only)
+  const startFresh = sessionStorage.getItem('ai_start_fresh');
+  
+  if (startFresh === 'true') {
+    // Clear session storage flag (one-time use)
+    sessionStorage.removeItem('ai_start_fresh');
+    
+    // Clear conversation state to start fresh
+    // This will force creation of a new conversation on first message
+    // The old conversation is already saved in the database
+    conversationId.value = null;
+    messages.value = [];
+    
+    console.log('🆕 Starting fresh AI conversation from alert (previous one auto-saved)');
+    
+    // Initialize preferences only, skip loading conversation history
+    if (gymId.value) {
+      void initialize(gymId.value, { skipHistory: true });
+    }
+  } else {
+    // Normal flow - always load existing conversation on page load/refresh
+    if (gymId.value) {
+      void initialize(gymId.value);
+    }
+  }
+  
+  // Check if we were navigated here from an alert click
+  const alertContext = sessionStorage.getItem('ai_context_alert');
+  if (alertContext) {
+    try {
+      const alert = JSON.parse(alertContext);
+      // Clear it immediately so it doesn't re-trigger
+      sessionStorage.removeItem('ai_context_alert');
+      
+      // Pre-fill the message based on the alert
+      let suggestedMessage = '';
+      
+      if (alert.title?.toLowerCase().includes('instructor')) {
+        suggestedMessage = `I need help fixing this scheduling issue: ${alert.description}. Can you help me assign an instructor?`;
+      } else if (alert.title?.toLowerCase().includes('capacity')) {
+        suggestedMessage = `There's a capacity issue: ${alert.description}. What should I do?`;
+      } else {
+        suggestedMessage = `I need help with this issue: ${alert.title}. ${alert.description}`;
+      }
+      
+      // Auto-send the message after a brief delay so user sees it
+      newMessage.value = suggestedMessage;
+      setTimeout(() => {
+        void handleSendMessage();
+      }, 800);
+      
+      // Show notification
+      Notify.create({
+        type: 'info',
+        message: 'AI is analyzing the problem from the alert...',
+        timeout: 2000
+      });
+    } catch (e) {
+      console.error('Error parsing alert context:', e);
+    }
+  }
+}
+
 onMounted(() => {
-  if (gymId.value) {
-    void initialize(gymId.value);
+  handleFreshSessionAndAlerts();
+});
+
+// Watch for route changes (when already on the page and query params change)
+watch(() => route.query.t, (newVal, oldVal) => {
+  if (newVal !== oldVal && newVal) {
+    console.log('🔄 Route query changed - checking for fresh session');
+    handleFreshSessionAndAlerts();
   }
 });
 </script>
 
 <style scoped>
+/* Override global padding for AI assistant page - needs edge-to-edge layout */
+.q-page.no-padding {
+  padding: 0 !important;
+}
+
 /* Page Background */
 .ai-assistant-page {
   background: #0d0d0d;
@@ -506,6 +779,43 @@ onMounted(() => {
 
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: #3d3d3d;
+}
+
+/* Clickable Instructor Names */
+.markdown-content :deep(.instructor-link) {
+  color: #ff8c00;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.markdown-content :deep(.instructor-link:hover) {
+  color: #ffa500;
+  text-decoration: none;
+  background: rgba(255, 140, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.markdown-content :deep(.instructor-link:active) {
+  transform: scale(0.98);
+}
+
+/* Action Buttons */
+.action-button {
+  transition: all 0.2s ease;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.action-button:active {
+  transform: translateY(0);
 }
 </style>
 
