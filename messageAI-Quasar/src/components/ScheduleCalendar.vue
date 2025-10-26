@@ -366,7 +366,7 @@ const { schedulesByDay, loading, fetchSchedules, deleteSchedule } = useSchedule(
 const { isOwner, isInstructor, canRSVPToClasses } = useRoles();
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const currentView = ref('template');
+const currentView = ref('month');
 const showDetails = ref(false);
 const selectedSchedule = ref<any>(null);
 const showInstanceDetails = ref(false);

@@ -3,39 +3,6 @@
     <div class="q-gutter-md">
       <div class="row items-center justify-between q-mb-md">
         <div class="text-h4">Class Schedule</div>
-        
-        <!-- Create Class Button (Owners/Instructors) -->
-        <q-btn
-          v-if="canManageSchedule"
-          icon="add"
-          label="Create Class"
-          color="primary"
-          @click="openCreateDialog"
-          class="q-mr-md"
-        />
-        
-        <!-- Gym Filter Toggles -->
-        <div v-if="gyms.length > 1" class="row q-gutter-sm items-center">
-          <q-btn
-            size="sm"
-            outline
-            color="primary"
-            label="All Gyms"
-            @click="selectAllGyms"
-            :disable="loading"
-          />
-          <q-separator vertical inset />
-          <q-checkbox
-            v-for="gym in gyms"
-            :key="gym.id"
-            :model-value="isGymSelected(gym.id)"
-            :label="gym.name"
-            :color="getGymColor(gym.id)"
-            @update:model-value="toggleGymFilter(gym.id)"
-            dense
-            :disable="loading"
-          />
-        </div>
       </div>
 
       <!-- No Gym Message -->
@@ -66,101 +33,23 @@
         />
       </div>
 
-      <!-- Multi-Gym Schedule Calendar -->
-      <div v-else-if="filteredSchedules.length > 0">
-        <div class="q-mb-lg q-px-sm">
-          <div class="text-body2 text-grey-7">
-            Showing {{ filteredSchedules.length }} class{{ filteredSchedules.length === 1 ? '' : 'es' }} from {{ selectedGymIds.length }} gym{{ selectedGymIds.length === 1 ? '' : 's' }}
-          </div>
-        </div>
+      <!-- Schedule Calendar View -->
+      <div v-else>
+        <ScheduleCalendar
+          v-if="currentGymId"
+          :gym-id="currentGymId"
+          :editable="canManageSchedule"
+          @edit-schedule="openEditDialogById"
+          @create-schedule="openCreateDialog"
+        />
         
-        <!-- Schedule List (grouped by day) -->
-        <div class="q-gutter-md q-px-sm">
-          <div v-for="day in daysOfWeek" :key="day" class="q-mb-lg">
-            <div class="text-h6 text-weight-medium q-mb-md q-mt-sm">{{ day }}</div>
-            <q-list bordered separator>
-              <q-item
-                v-for="schedule in getSchedulesForDay(day)"
-                :key="schedule.id"
-                clickable
-                v-ripple
-                @click="openDetails(schedule)"
-                :class="{ 'cancelled-class': schedule.is_cancelled }"
-              >
-                <q-item-section avatar>
-                  <q-avatar
-                    :color="schedule.is_cancelled ? 'grey-5' : getClassColor(schedule)"
-                    text-color="white"
-                    size="48px"
-                    class="class-avatar"
-                  >
-                    {{ getClassEmoji(schedule) }}
-                  </q-avatar>
-                </q-item-section>
-
-                <q-item-section>
-                  <q-item-label class="text-weight-medium" :class="{ 'text-strike': schedule.is_cancelled }">
-                    {{ getClassTitle(schedule) }}
-                    <q-badge v-if="schedule.is_cancelled" color="negative" label="CANCELLED" class="q-ml-sm" />
-                  </q-item-label>
-                  <q-item-label caption :class="{ 'text-strike': schedule.is_cancelled }">
-                    {{ schedule.start_time }} - {{ schedule.end_time }}
-                  </q-item-label>
-                  <q-item-label caption class="text-grey-7">
-                    <q-icon name="place" size="xs" /> {{ schedule.gym_name }}
-                    <span v-if="schedule.instructor_name" class="q-ml-sm">
-                      <q-icon name="person" size="xs" /> {{ schedule.instructor_name }}
-                    </span>
-                  </q-item-label>
-                </q-item-section>
-
-                <q-item-section side>
-                  <div class="column items-end q-gutter-xs">
-                    <q-badge
-                      :color="getSkillLevelColor(schedule)"
-                      :label="normalizeLevel(schedule)"
-                    />
-                    <q-badge
-                      v-if="getRSVPStatus(schedule)"
-                      :color="getRSVPStatus(schedule)?.status === 'confirmed' ? 'positive' : 'warning'"
-                      :icon="getRSVPStatus(schedule)?.status === 'confirmed' ? 'check_circle' : 'schedule'"
-                      :label="getRSVPStatus(schedule)?.status === 'confirmed' ? 'RSVP\'d' : 'Waitlist'"
-                    />
-                    <!-- Edit Button for Owners/Instructors -->
-                    <q-btn
-                      v-if="canEditSchedule(schedule)"
-                      icon="edit"
-                      size="sm"
-                      flat
-                      round
-                      color="primary"
-                      @click.stop="openEditDialog(schedule)"
-                    >
-                      <q-tooltip>Edit Class</q-tooltip>
-                    </q-btn>
-                  </div>
-                </q-item-section>
-              </q-item>
-              
-              <!-- No classes for this day -->
-              <q-item v-if="getSchedulesForDay(day).length === 0">
-                <q-item-section>
-                  <q-item-label class="text-grey-6 text-center">
-                    No classes scheduled
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
+        <!-- No Gym Selected -->
+        <div v-else class="text-center q-py-xl">
+          <q-icon name="event_busy" size="64px" color="grey-5" class="q-mb-md" />
+          <div class="text-h6 text-grey-6">No Gym Selected</div>
+          <div class="text-body2 text-grey-7 q-mt-sm">
+            Select a gym to view the schedule
           </div>
-        </div>
-      </div>
-
-      <!-- No Filtered Results -->
-      <div v-else class="text-center q-py-xl">
-        <q-icon name="filter_list_off" size="64px" color="grey-5" class="q-mb-md" />
-        <div class="text-h6 text-grey-6">No Classes Match Your Filters</div>
-        <div class="text-body2 text-grey-7 q-mt-sm">
-          Try selecting different gyms
         </div>
       </div>
     </div>
@@ -193,6 +82,7 @@ import { useSchedule } from '../composables/useMultiGymSchedule'
 import { ref } from 'vue'
 import ClassDetailsDialog from '../components/ClassDetailsDialog.vue'
 import ScheduleEditorDialog from '../components/ScheduleEditorDialog.vue'
+import ScheduleCalendar from '../components/ScheduleCalendar.vue'
 import { useRSVP } from '../composables/useRSVP'
 import { user, profile } from '../state/auth'
 import { useRoles } from '../composables/useRoles'
@@ -492,6 +382,14 @@ function openEditDialog(schedule: any) {
   scheduleToEdit.value = schedule
   showEditor.value = true
   showDetails.value = false
+}
+
+function openEditDialogById(scheduleId: string) {
+  // Find schedule by ID and open edit dialog
+  const schedule = filteredSchedules.value.find(s => s.id === scheduleId)
+  if (schedule) {
+    openEditDialog(schedule)
+  }
 }
 
 async function handleScheduleSaved() {
