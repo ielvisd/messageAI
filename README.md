@@ -4,7 +4,7 @@
 
 ## What is Ossome?
 
-Ossome is a WhatsApp-inspired messaging app built specifically for jiu-jitsu gym owners and teams. It helps gym owners manage trainers, schedules, and member communication across locations and time zones. 
+Ossome is a WhatsApp-inspired messaging app built specifically for jiu-jitsu gym owners and teams. It helps gym owners manage instructors, schedules, and member communication across locations and time zones. 
 
 **Key Features:**
 - 💬 Real-time 1:1 and group messaging

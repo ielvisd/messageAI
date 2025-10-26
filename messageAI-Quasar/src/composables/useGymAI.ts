@@ -137,11 +137,20 @@ export function useGymAI() {
     },
     {
       name: 'assign_instructor_to_class',
-      description: 'Assign an instructor to a specific class. Only available to owners/admins. Requires actual schedule_id and instructor_id from previous queries.',
+      description: 'Assign an instructor to a recurring class template (all future occurrences). Only available to owners/admins. CRITICAL: You MUST call get_instructors first to get the actual instructor UUIDs. NEVER use descriptive IDs like "ana-rodriguez" - ONLY use the full UUID from get_instructors results.',
       parameters: {
-        schedule_id: { type: 'string', description: 'UUID of the gym schedule to assign instructor to' },
-        instructor_id: { type: 'string', description: 'UUID of the instructor profile to assign' },
+        schedule_id: { type: 'string', description: 'UUID of the gym schedule to assign instructor to (from get_schedule results)' },
+        instructor_id: { type: 'string', description: 'UUID of the instructor profile to assign (MUST be from get_instructors results, looks like "a1b2c3d4-e5f6-7890-abcd-ef1234567890")' },
         assignment_type: { type: 'string', description: 'Type of assignment: "one_time" for a single class or "recurring_weekly" for all future occurrences. Default "recurring_weekly"', optional: true }
+      }
+    },
+    {
+      name: 'assign_instructor_to_date_instance',
+      description: 'Assign an instructor to a specific future date occurrence (not recurring). Use this for one-time assignments like "assign John to Monday Dec 15th class". Only available to owners/admins. CRITICAL: You MUST call get_instructors first to get the actual instructor UUIDs.',
+      parameters: {
+        schedule_id: { type: 'string', description: 'UUID of the gym schedule (from get_schedule results)' },
+        instructor_id: { type: 'string', description: 'UUID of the instructor profile to assign (MUST be from get_instructors results)' },
+        date: { type: 'string', description: 'Specific date for the assignment (YYYY-MM-DD format)' }
       }
     },
     {
@@ -199,6 +208,8 @@ export function useGymAI() {
           return await getInstructors(gymId, parameters as { include_schedule?: boolean });
         case 'assign_instructor_to_class':
           return await assignInstructorToClass(parameters as { schedule_id: string; instructor_id: string; assignment_type?: string });
+        case 'assign_instructor_to_date_instance':
+          return await assignInstructorToDateInstance(gymId, parameters as { schedule_id: string; instructor_id: string; date: string });
         case 'check_schedule_problems':
           return await checkScheduleProblems(gymId, parameters as { date_range?: { start: string; end: string } });
         case 'get_instructor_schedule':
@@ -479,6 +490,67 @@ export function useGymAI() {
       success: true,
       message: `Successfully assigned ${instructor.name} to the class`,
       instructor_name: instructor.name
+    };
+  }
+
+  // New Tool: Assign instructor to specific date instance
+  async function assignInstructorToDateInstance(gymId: string | null, params: { schedule_id: string; instructor_id: string; date: string }) {
+    if (!gymId) throw new Error('No gym selected');
+    if (!user.value?.id) throw new Error('User not authenticated');
+
+    // Check if user is owner/admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single();
+
+    if (!profile || profile.role !== 'owner') {
+      throw new Error('Only gym owners can assign instructors');
+    }
+
+    // Get instructor name
+    const { data: instructor } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', params.instructor_id)
+      .single();
+
+    if (!instructor) throw new Error('Instructor not found');
+
+    // Get schedule details to include in the override
+    const { data: schedule } = await supabase
+      .from('gym_schedules')
+      .select('*')
+      .eq('id', params.schedule_id)
+      .single();
+
+    if (!schedule) throw new Error('Schedule not found');
+
+    // Use the useClassInstances composable to create an override
+    const { useClassInstances } = await import('./useClassInstances');
+    const { overrideInstance } = useClassInstances();
+
+    // Create an override for this specific date with the new instructor
+    await overrideInstance(params.schedule_id, params.date, {
+      instructor_id: params.instructor_id,
+      gym_id: gymId,
+      class_type: schedule.class_type,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
+      level: schedule.level,
+      notes: schedule.notes,
+      max_capacity: schedule.max_capacity,
+      gym_location: schedule.gym_location,
+      is_cancelled: false
+    });
+
+    return {
+      success: true,
+      message: `Successfully assigned ${instructor.name} to ${schedule.class_type} class on ${params.date}`,
+      instructor_name: instructor.name,
+      date: params.date,
+      class_type: schedule.class_type
     };
   }
 

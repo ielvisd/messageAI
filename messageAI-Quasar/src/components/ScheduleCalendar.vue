@@ -5,11 +5,11 @@
       <div class="text-h6">Schedule</div>
       <q-space />
       
-      <!-- View Selector - Only template view enabled for demo -->
+      <!-- View Selector -->
       <q-tabs v-model="currentView" dense class="q-mr-md">
         <q-tab name="template" label="Template" icon="event_repeat" />
-        <!-- <q-tab name="month" label="Month" icon="calendar_month" /> -->
-        <!-- <q-tab name="week" label="Week" icon="view_week" /> -->
+        <q-tab name="month" label="Month" icon="calendar_month" />
+        <q-tab name="week" label="Week" icon="view_week" />
       </q-tabs>
       
       <q-btn
@@ -118,25 +118,21 @@
 
       </q-tab-panel>
 
-      <!-- Month View - Temporarily disabled for demo -->
-      <!--
+      <!-- Month View -->
       <q-tab-panel name="month" class="q-pa-none">
         <ScheduleMonthView
           :gym-id="gymId"
           @view-class="viewInstance"
         />
       </q-tab-panel>
-      -->
 
-      <!-- Week View - Temporarily disabled for demo -->
-      <!--
+      <!-- Week View -->
       <q-tab-panel name="week" class="q-pa-none">
         <ScheduleWeekView
           :gym-id="gymId"
           @view-class="viewInstance"
         />
       </q-tab-panel>
-      -->
     </q-tab-panels>
 
     <!-- Class Details Dialog (for Template View) -->
