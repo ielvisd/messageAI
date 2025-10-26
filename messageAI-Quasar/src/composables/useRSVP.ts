@@ -31,19 +31,43 @@ export function useRSVP(userId?: string) {
     }
   }
 
-  async function rsvpToClass(scheduleId: string, rsvpDate: string, uid: string) {
+  async function rsvpToClass(
+    scheduleId: string | null, 
+    rsvpDate: string, 
+    uid: string,
+    instanceId?: string | null
+  ) {
     loading.value = true;
     error.value = null;
 
     try {
-      // First, check capacity
-      const { data: schedule } = await supabase
-        .from('gym_schedules')
-        .select('max_capacity, current_rsvps')
-        .eq('id', scheduleId)
-        .single();
+      let maxCapacity: number | null = null;
+      let currentRsvps = 0;
 
-      const status = schedule && schedule.max_capacity && schedule.current_rsvps >= schedule.max_capacity
+      // Check capacity based on whether it's a recurring class or instance
+      if (instanceId) {
+        // For one-time events/instances, check capacity from class_instances table
+        const { data: instance } = await supabase
+          .from('class_instances')
+          .select('max_capacity, current_rsvps')
+          .eq('id', instanceId)
+          .single();
+        
+        maxCapacity = instance?.max_capacity || null;
+        currentRsvps = instance?.current_rsvps || 0;
+      } else if (scheduleId) {
+        // For recurring classes, check capacity from gym_schedules table
+        const { data: schedule } = await supabase
+          .from('gym_schedules')
+          .select('max_capacity, current_rsvps')
+          .eq('id', scheduleId)
+          .single();
+        
+        maxCapacity = schedule?.max_capacity || null;
+        currentRsvps = schedule?.current_rsvps || 0;
+      }
+
+      const status = maxCapacity && currentRsvps >= maxCapacity
         ? 'waitlist'
         : 'confirmed';
 
@@ -51,6 +75,7 @@ export function useRSVP(userId?: string) {
         .from('class_rsvps')
         .insert({
           schedule_id: scheduleId,
+          instance_id: instanceId || null,
           user_id: uid,
           rsvp_date: rsvpDate,
           status
@@ -100,15 +125,33 @@ export function useRSVP(userId?: string) {
     }
   }
 
-  async function checkRSVPStatus(scheduleId: string, rsvpDate: string, uid: string) {
+  async function checkRSVPStatus(
+    scheduleId: string | null, 
+    rsvpDate: string, 
+    uid: string,
+    instanceId?: string | null
+  ) {
     try {
-      const { data } = await supabase
+      let query = supabase
         .from('class_rsvps')
         .select('*')
-        .eq('schedule_id', scheduleId)
         .eq('user_id', uid)
-        .eq('rsvp_date', rsvpDate)
-        .single();
+        .eq('rsvp_date', rsvpDate);
+
+      // Add appropriate filter based on what we're checking
+      if (instanceId) {
+        query = query.eq('instance_id', instanceId);
+      } else if (scheduleId) {
+        query = query.eq('schedule_id', scheduleId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      // maybeSingle returns null if no row found, which is fine
+      if (error) {
+        console.error('Error checking RSVP status:', error);
+        return null;
+      }
 
       return data;
     } catch {

@@ -2,6 +2,9 @@
   "mcpServers": {
     "vue-mcp": {
       "url": "http://localhost:9003/__mcp/sse"
+    }, 
+    "quasar Docs": {
+      "url": "https://gitmcp.io/quasarframework/quasar"
     }
   }
 }

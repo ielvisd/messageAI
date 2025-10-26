@@ -1,7 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
-import { RealtimeChannel } from '@supabase/supabase-js'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface Reaction {
   id: string

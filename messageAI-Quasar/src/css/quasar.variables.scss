@@ -8,21 +8,22 @@
 // Your own variables (that are declared here) and Quasar's own
 // ones will be available out of the box in your .vue/.scss/.sass files
 
-// Custom Ossome Color Palette
-// Dark Navy:    #2B2D42
-// Cool Gray:    #8D99AE
-// Light Gray:   #EDF2F4
-// Bright Red:   #EF233C
-// Deep Red:     #D90429
+// Dark Gym Theme - Bold & Athletic Palette
+// Deep Black:      #1a1a1a
+// Dark Gray:       #2d2d2d
+// Dark Orange:     #ff8c00
+// Vibrant Green:   #00d084
+// Near Black BG:   #0d0d0d
+// Surface Gray:    #262626
 
-$primary: #2B2D42;    // Dark Navy - main brand color
-$secondary: #8D99AE;  // Cool Gray - secondary actions
-$accent: #EF233C;     // Bright Red - highlights & CTAs
+$primary: #1a1a1a;    // Deep Black/Charcoal - main brand color
+$secondary: #2d2d2d;  // Dark Gray - secondary actions
+$accent: #ff8c00;     // Dark Orange - highlights & CTAs
 
-$dark: #2B2D42;       // Dark Navy for dark mode
-$dark-page: #1a1b2e;  // Slightly darker than primary
+$dark: #0d0d0d;       // Near Black for dark mode background
+$dark-page: #0d0d0d;  // Near Black page background
 
-$positive: #21ba45;   // Keep green for success
-$negative: #D90429;   // Deep Red for errors/danger
-$info: #8D99AE;       // Cool Gray for info
-$warning: #f2c037;    // Keep yellow for warnings
+$positive: #00d084;   // Vibrant Green for success
+$negative: #ff8c00;   // Dark Orange for errors/danger
+$info: #2d2d2d;       // Dark Gray for info
+$warning: #ffa726;    // Orange for warnings

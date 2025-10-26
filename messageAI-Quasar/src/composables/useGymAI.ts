@@ -95,10 +95,10 @@ export function useGymAI() {
     },
     {
       name: 'rsvp_to_class',
-      description: 'RSVP user to a specific class',
+      description: 'RSVP user to a specific class. CRITICAL: You must have the actual schedule UUID from a previous get_schedule or find_next_class call. Do NOT make up or guess schedule IDs.',
       parameters: {
-        schedule_id: { type: 'string', description: 'ID of the gym schedule' },
-        rsvp_date: { type: 'string', description: 'Date for RSVP (YYYY-MM-DD format)' }
+        schedule_id: { type: 'string', description: 'The ACTUAL UUID of the gym schedule from the [ID: uuid] in the get_schedule results. Example: "123e4567-e89b-12d3-a456-426614174000". NEVER use fake IDs like "uuid-gi-monday-7pm".' },
+        rsvp_date: { type: 'string', description: 'Date for RSVP (YYYY-MM-DD format). Use the next occurrence of the class day.' }
       }
     },
     {
@@ -127,6 +127,55 @@ export function useGymAI() {
         class_type: { type: 'string', description: 'Class type to find (GI, NO-GI, Open Mat, Competition)' },
         after_day: { type: 'string', description: 'Find classes after this day (Monday-Sunday)' }
       }
+    },
+    {
+      name: 'get_instructors',
+      description: 'List all instructors at the gym with their preferences and current assignments. Only available to owners/admins.',
+      parameters: {
+        include_schedule: { type: 'boolean', description: 'Optional: If true, include each instructor\'s current class schedule. Default false.', optional: true }
+      }
+    },
+    {
+      name: 'assign_instructor_to_class',
+      description: 'Assign an instructor to a specific class. Only available to owners/admins. Requires actual schedule_id and instructor_id from previous queries.',
+      parameters: {
+        schedule_id: { type: 'string', description: 'UUID of the gym schedule to assign instructor to' },
+        instructor_id: { type: 'string', description: 'UUID of the instructor profile to assign' },
+        assignment_type: { type: 'string', description: 'Type of assignment: "one_time" for a single class or "recurring_weekly" for all future occurrences. Default "recurring_weekly"', optional: true }
+      }
+    },
+    {
+      name: 'check_schedule_problems',
+      description: 'Detect scheduling issues like missing instructors, capacity problems, or conflicts. Returns a list of problems with severity and suggested actions.',
+      parameters: {
+        date_range: { type: 'object', description: 'Optional: {start: "YYYY-MM-DD", end: "YYYY-MM-DD"}. Default is next 7 days.', optional: true }
+      }
+    },
+    {
+      name: 'get_instructor_schedule',
+      description: 'Get an instructor\'s full teaching schedule. Shows all classes they are assigned to.',
+      parameters: {
+        instructor_id: { type: 'string', description: 'UUID of the instructor' },
+        date_range: { type: 'object', description: 'Optional: {start: "YYYY-MM-DD", end: "YYYY-MM-DD"}. Default is next 7 days.', optional: true }
+      }
+    },
+    {
+      name: 'send_alert',
+      description: 'Send a notification/alert message to gym members via chat. Only available to owners/admins.',
+      parameters: {
+        message: { type: 'string', description: 'The alert message to send' },
+        target: { type: 'string', description: 'Where to send: "gym_chat" for all gym members, "instructors" for instructors only, or a specific user_id' }
+      }
+    },
+    {
+      name: 'cancel_class_with_notification',
+      description: 'Cancel a class and optionally notify all RSVPed members. Only available to owners/admins.',
+      parameters: {
+        schedule_id: { type: 'string', description: 'UUID of the schedule to cancel' },
+        date: { type: 'string', description: 'Optional: Specific date (YYYY-MM-DD) to cancel. If not provided, cancels the entire recurring class.', optional: true },
+        reason: { type: 'string', description: 'Reason for cancellation to include in notification' },
+        notify_members: { type: 'boolean', description: 'Whether to send notifications to RSVPed members. Default true.', optional: true }
+      }
     }
   ];
 
@@ -146,6 +195,18 @@ export function useGymAI() {
           return await searchScheduleContext(gymId, parameters as { query: string });
         case 'find_next_class':
           return await findNextClass(gymId, parameters as { class_type: string; after_day: string });
+        case 'get_instructors':
+          return await getInstructors(gymId, parameters as { include_schedule?: boolean });
+        case 'assign_instructor_to_class':
+          return await assignInstructorToClass(parameters as { schedule_id: string; instructor_id: string; assignment_type?: string });
+        case 'check_schedule_problems':
+          return await checkScheduleProblems(gymId, parameters as { date_range?: { start: string; end: string } });
+        case 'get_instructor_schedule':
+          return await getInstructorSchedule(gymId, parameters as { instructor_id: string; date_range?: { start: string; end: string } });
+        case 'send_alert':
+          return await sendAlert(gymId, parameters as { message: string; target: string });
+        case 'cancel_class_with_notification':
+          return await cancelClassWithNotification(gymId, parameters as { schedule_id: string; date?: string; reason: string; notify_members?: boolean });
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
@@ -198,16 +259,29 @@ export function useGymAI() {
   async function rsvpToClass(params: { schedule_id: string; rsvp_date: string }) {
     if (!user.value?.id) throw new Error('User not authenticated');
 
-    // Check capacity
-    const { data: schedule } = await supabase
+    console.log(`🔄 Making RSVP for schedule_id: ${params.schedule_id}, date: ${params.rsvp_date}`);
+
+    // Check capacity first
+    const { data: schedule, error: scheduleError } = await supabase
       .from('gym_schedules')
-      .select('max_capacity, current_rsvps')
+      .select('max_capacity, current_rsvps, class_type, day_of_week, start_time')
       .eq('id', params.schedule_id)
       .single();
 
-    const status = schedule && schedule.max_capacity && schedule.current_rsvps >= schedule.max_capacity
+    if (scheduleError) {
+      console.error('❌ Error fetching schedule:', scheduleError);
+      throw new Error(`Schedule not found: ${scheduleError.message}`);
+    }
+
+    if (!schedule) {
+      throw new Error('Schedule not found');
+    }
+
+    const status = schedule.max_capacity && schedule.current_rsvps >= schedule.max_capacity
       ? 'waitlist'
       : 'confirmed';
+
+    console.log(`📋 Schedule capacity: ${schedule.current_rsvps}/${schedule.max_capacity}, status: ${status}`);
 
     const { data, error } = await supabase
       .from('class_rsvps')
@@ -220,7 +294,12 @@ export function useGymAI() {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error creating RSVP:', error);
+      throw error;
+    }
+
+    console.log(`✅ RSVP created successfully:`, data);
     return { rsvp: data, status };
   }
 
@@ -317,6 +396,294 @@ export function useGymAI() {
     }
     
     return { schedules: [], message: `No ${params.class_type} classes found in the schedule` };
+  }
+
+  // New Tool: Get instructors
+  async function getInstructors(gymId: string | null, params: { include_schedule?: boolean }) {
+    if (!gymId) throw new Error('No gym selected');
+
+    const { data: instructors, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role, instructor_preferences')
+      .eq('gym_id', gymId)
+      .in('role', ['instructor', 'owner'])
+      .order('name');
+
+    if (error) throw error;
+
+    const result: any[] = [];
+
+    for (const instructor of instructors || []) {
+      const instructorData: any = {
+        id: instructor.id,
+        name: instructor.name,
+        email: instructor.email,
+        role: instructor.role,
+        preferences: instructor.instructor_preferences || {}
+      };
+
+      if (params.include_schedule) {
+        const { data: schedule } = await supabase
+          .from('gym_schedules')
+          .select('*')
+          .eq('instructor_id', instructor.id)
+          .eq('is_active', true)
+          .order('day_of_week');
+
+        instructorData.current_schedule = schedule || [];
+      }
+
+      result.push(instructorData);
+    }
+
+    return { instructors: result };
+  }
+
+  // New Tool: Assign instructor to class
+  async function assignInstructorToClass(params: { schedule_id: string; instructor_id: string; assignment_type?: string }) {
+    if (!user.value?.id) throw new Error('User not authenticated');
+
+    // Check if user is owner/admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single();
+
+    if (!profile || profile.role !== 'owner') {
+      throw new Error('Only gym owners can assign instructors');
+    }
+
+    // Get instructor name
+    const { data: instructor } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', params.instructor_id)
+      .single();
+
+    if (!instructor) throw new Error('Instructor not found');
+
+    // Call the database function
+    const { data, error } = await supabase.rpc('assign_instructor_to_class', {
+      p_schedule_id: params.schedule_id,
+      p_instructor_id: params.instructor_id,
+      p_assignment_type: params.assignment_type || 'recurring_weekly',
+      p_assigned_by: user.value.id,
+      p_assignment_method: 'ai',
+      p_ai_confidence: null
+    });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: `Successfully assigned ${instructor.name} to the class`,
+      instructor_name: instructor.name
+    };
+  }
+
+  // New Tool: Check schedule problems
+  async function checkScheduleProblems(gymId: string | null, params: { date_range?: { start: string; end: string } }) {
+    if (!gymId) throw new Error('No gym selected');
+
+    // Use the useScheduleProblems composable
+    const { useScheduleProblems } = await import('./useScheduleProblems');
+    const { checkProblems: checkFn } = useScheduleProblems();
+    
+    const problems = await checkFn(gymId, params.date_range);
+
+    return {
+      problems,
+      summary: {
+        total: problems.length,
+        critical: problems.filter(p => p.severity === 'critical').length,
+        warnings: problems.filter(p => p.severity === 'warning').length,
+        info: problems.filter(p => p.severity === 'info').length
+      }
+    };
+  }
+
+  // New Tool: Get instructor schedule
+  async function getInstructorSchedule(gymId: string | null, params: { instructor_id: string; date_range?: { start: string; end: string } }) {
+    if (!gymId) throw new Error('No gym selected');
+
+    const { data: schedule, error } = await supabase
+      .from('gym_schedules')
+      .select('*')
+      .eq('gym_id', gymId)
+      .eq('instructor_id', params.instructor_id)
+      .eq('is_active', true)
+      .order('day_of_week, start_time');
+
+    if (error) throw error;
+
+    const { data: instructor } = await supabase
+      .from('profiles')
+      .select('name, email')
+      .eq('id', params.instructor_id)
+      .single();
+
+    return {
+      instructor: instructor || { name: 'Unknown', email: '' },
+      schedule: schedule || [],
+      total_classes: schedule?.length || 0
+    };
+  }
+
+  // New Tool: Send alert
+  async function sendAlert(gymId: string | null, params: { message: string; target: string }) {
+    if (!gymId) throw new Error('No gym selected');
+    if (!user.value?.id) throw new Error('User not authenticated');
+
+    // Check if user is owner/admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single();
+
+    if (!profile || profile.role !== 'owner') {
+      throw new Error('Only gym owners can send alerts');
+    }
+
+    // Determine target chat
+    let chatId: string | null = null;
+
+    if (params.target === 'gym_chat') {
+      // Get gym's main chat
+      const { data: gym } = await supabase
+        .from('gyms')
+        .select('gym_chat_id')
+        .eq('id', gymId)
+        .single();
+
+      chatId = gym?.gym_chat_id || null;
+    } else if (params.target === 'instructors') {
+      // Find or create instructor chat
+      // For now, use gym_chat (future: create dedicated instructor chat)
+      const { data: gym } = await supabase
+        .from('gyms')
+        .select('gym_chat_id')
+        .eq('id', gymId)
+        .single();
+
+      chatId = gym?.gym_chat_id || null;
+    } else {
+      // Assume it's a user_id for direct message
+      chatId = params.target;
+    }
+
+    if (!chatId) {
+      throw new Error('Could not determine target chat');
+    }
+
+    // Send message
+    const { data: message, error } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: user.value.id,
+        content: `🚨 ${params.message}`,
+        message_type: 'text'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: 'Alert sent successfully',
+      message_id: message?.id
+    };
+  }
+
+  // New Tool: Cancel class with notification
+  async function cancelClassWithNotification(
+    gymId: string | null,
+    params: { schedule_id: string; date?: string; reason: string; notify_members?: boolean }
+  ) {
+    if (!gymId) throw new Error('No gym selected');
+    if (!user.value?.id) throw new Error('User not authenticated');
+
+    // Check if user is owner/admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.value.id)
+      .single();
+
+    if (!profile || profile.role !== 'owner') {
+      throw new Error('Only gym owners can cancel classes');
+    }
+
+    // Get class details
+    const { data: schedule } = await supabase
+      .from('gym_schedules')
+      .select('*')
+      .eq('id', params.schedule_id)
+      .single();
+
+    if (!schedule) throw new Error('Schedule not found');
+
+    // Cancel the class
+    const { error: cancelError } = await supabase
+      .from('gym_schedules')
+      .update({ is_cancelled: true })
+      .eq('id', params.schedule_id);
+
+    if (cancelError) throw cancelError;
+
+    // Get affected RSVPs if notify_members is true
+    let affectedMembers = 0;
+    if (params.notify_members !== false) {
+      const rsvpQuery = supabase
+        .from('class_rsvps')
+        .select('user_id, profiles(name)')
+        .eq('schedule_id', params.schedule_id)
+        .in('status', ['confirmed', 'waitlist']);
+
+      if (params.date) {
+        rsvpQuery.eq('rsvp_date', params.date);
+      }
+
+      const { data: rsvps } = await rsvpQuery;
+
+      if (rsvps && rsvps.length > 0) {
+        affectedMembers = rsvps.length;
+
+        // Send notification to gym chat
+        const { data: gym } = await supabase
+          .from('gyms')
+          .select('gym_chat_id')
+          .eq('id', gymId)
+          .single();
+
+        if (gym?.gym_chat_id) {
+          const cancelMessage = `🚨 Class Cancellation\n\nClass: ${schedule.class_type} - ${schedule.day_of_week} ${schedule.start_time}\nReason: ${params.reason}\n\n${affectedMembers} members affected.`;
+
+          await supabase
+            .from('messages')
+            .insert({
+              chat_id: gym.gym_chat_id,
+              sender_id: user.value.id,
+              content: cancelMessage,
+              message_type: 'text'
+            });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Class cancelled successfully',
+      affected_members: affectedMembers,
+      class_details: {
+        class_type: schedule.class_type,
+        day: schedule.day_of_week,
+        time: schedule.start_time
+      }
+    };
   }
 
   // Capability 4: Memory/State Management
@@ -447,14 +814,65 @@ export function useGymAI() {
           throw followupError;
         }
 
-        console.log('✅ Got final AI response:', followupData.message);
+        console.log('✅ Got follow-up response:', followupData.message);
+        console.log('🔍 Does AI want more tools?', followupData.tool_calls?.length > 0 ? 'YES' : 'NO');
         
-        // Add assistant response
-        messages.value.push({
-          role: 'assistant',
-          content: followupData.message,
-          timestamp: new Date().toISOString()
-        });
+        // Check if AI wants to make MORE tool calls (multi-step workflow)
+        if (followupData.tool_calls && followupData.tool_calls.length > 0) {
+          console.log('🔁 AI requested more tools after first round:', followupData.tool_calls);
+          
+          // Execute the additional tools
+          const additionalToolResults = [];
+          for (const toolCall of followupData.tool_calls) {
+            console.log(`🔨 Executing additional tool: ${toolCall.name}`, toolCall.parameters);
+            const toolResult = await executeTool(toolCall.name, toolCall.parameters, gymId);
+            console.log(`✅ Additional tool result for ${toolCall.name}:`, toolResult);
+            
+            additionalToolResults.push({
+              tool: toolCall.name,
+              result: toolResult
+            });
+          }
+          
+          // Call AI one more time with these results
+          console.log('🔄 Final AI call with additional tool results...');
+          const { data: finalData, error: finalError } = await supabase.functions.invoke('gym-ai-assistant', {
+            body: {
+              message: userMessage,
+              conversationHistory: messages.value,
+              conversationState: {
+                preferences: conversationState.value.preferences,
+                context: (conversationState.value.context || []).slice(-5)
+              },
+              gymId,
+              userId: user.value?.id,
+              tools,
+              userTimezone: timezone,
+              toolResults: additionalToolResults
+            }
+          });
+          
+          if (finalError) {
+            console.error('❌ Final call error:', finalError);
+            throw finalError;
+          }
+          
+          console.log('✅ Got final AI response:', finalData.message);
+          
+          // Add the final response
+          messages.value.push({
+            role: 'assistant',
+            content: finalData.message,
+            timestamp: new Date().toISOString()
+          });
+        } else {
+          // No more tools needed, just add the response
+          messages.value.push({
+            role: 'assistant',
+            content: followupData.message,
+            timestamp: new Date().toISOString()
+          });
+        }
       } else {
         // No tool calls, just add response
         messages.value.push({

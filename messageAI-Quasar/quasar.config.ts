@@ -26,8 +26,8 @@ export default defineConfig((ctx) => {
       // 'eva-icons',
       // 'themify',
       // 'line-awesome',
-      'roboto-font', // Use Roboto as base font
-      'material-icons', // optional, you are not bound to it
+      // Using Inter font from Google Fonts directly in app.scss
+      'material-icons', // Material icons for UI components
     ],
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
@@ -93,7 +93,7 @@ export default defineConfig((ctx) => {
           VueMcp,
           {
             printUrl: true,
-            updateCursorMcpJson: true
+            updateCursorMcpJson: false
           }
         ],
       ] as any,

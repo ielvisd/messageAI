@@ -119,7 +119,7 @@ export function useBeltProgression() {
       })
 
       if (rpcError) throw rpcError
-      return data as any
+      return data
     } catch (err) {
       console.error('Error awarding belt:', err)
       error.value = (err as Error).message

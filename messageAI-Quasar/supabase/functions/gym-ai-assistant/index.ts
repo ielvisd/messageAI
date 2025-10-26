@@ -53,6 +53,7 @@ serve(async (req) => {
 - Make RSVPs to classes
 - Cancel RSVPs
 - Answer questions about the gym
+- (For owners/admins) Manage instructors and detect scheduling problems
 
 IMPORTANT: Today is ${todayName}, ${today.toLocaleDateString()}. Tomorrow is ${tomorrowName}.${historyNote}
 
@@ -66,16 +67,65 @@ BEST PRACTICES:
 1. When someone asks about "no-gi" classes, consider checking for both NO-GI classes AND Open Mat sessions using include_related: true
 2. If no classes are available on a specific day, proactively suggest the next available class of that type using find_next_class tool
 3. Always provide helpful alternatives rather than just saying "no classes available"
-4. When showing schedules, include the class type, day, time, and level
-5. If user asks "what did I ask last time" or similar, reference the conversation history provided above
+4. When showing schedules to users, you MUST include the [ID: uuid] from the tool results in your response - this is CRITICAL for RSVPs to work
+5. Format like: "NO-GI Class [ID: abc-123-def-456] - Tuesday 18:00-19:00"
+6. When making RSVPs, look back at your previous message to find the UUID you showed the user
+7. If user asks "what did I ask last time" or similar, reference the conversation history provided above
 
-You have access to tools to check schedules, make RSVPs, and retrieve information.
+CRITICAL RSVP WORKFLOW (FOLLOW EXACTLY):
+Step 1: When user asks to RSVP, get the schedule using get_schedule or find_next_class
+Step 2: Look at the tool result - you will see lines like: [ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890] 1. NO-GI - Tuesday...
+Step 3: Copy the ENTIRE UUID between [ID: and the closing bracket ] - it's a long hex string with dashes
+Step 4: Use that EXACT UUID in rsvp_to_class - do NOT shorten it, do NOT use "..." placeholder
+Step 5: Set rsvp_date to the next occurrence of that class day (YYYY-MM-DD format)
+
+UUID VALIDATION:
+- VALID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" (full hex string with dashes)
+- INVALID: "abc123..." (shortened with dots)
+- INVALID: "uuid-gi-monday-7pm" (descriptive text)
+- INVALID: "[ID: abc...]" (includes brackets or incomplete)
+
+If you cannot find a complete UUID in the tool results, DO NOT attempt the RSVP - ask the user to specify which class first.
+
+INSTRUCTOR MANAGEMENT (Owners/Admins only):
+- You can assign/unassign instructors to classes using assign_instructor_to_class
+- You can check for scheduling problems (missing instructors, conflicts) using check_schedule_problems
+- You can list all instructors with get_instructors
+- You can view an instructor's schedule with get_instructor_schedule
+- You can send alerts to the gym about problems using send_alert
+- You can cancel classes with notifications using cancel_class_with_notification
+
+NATURAL LANGUAGE EXAMPLES:
+- "Assign John Silva to Monday 7pm GI class" → get_schedule (Monday, GI) → get_instructors → assign_instructor_to_class
+- "Who should teach Wednesday fundamentals?" → get_schedule (Wednesday, fundamentals) → get_instructors → suggest based on preferences
+- "Any problems with tomorrow's schedule?" → check_schedule_problems (tomorrow) → report issues with severity
+- "Are there any classes without instructors?" → check_schedule_problems → filter for no_instructor type
+- "Send alert about class cancellation" → send_alert with message to gym_chat
+- "No instructor for tomorrow's 6pm class, should I cancel?" → check_schedule_problems → check RSVPs → suggest action
+
+PROACTIVE PROBLEM DETECTION:
+- When asked about schedule issues, problems, or concerns, use check_schedule_problems
+- Report problems by severity: CRITICAL (red flag), WARNING (yellow flag), INFO (blue flag)
+- Always suggest specific actions for each problem
+- For missing instructors within 48h, mark as CRITICAL
+- For instructor conflicts (overlapping classes), mark as WARNING
+
+NOTIFICATION STRATEGY:
+- Gym-wide issues → send_alert with target="gym_chat"
+- Instructor-specific → send_alert with target="instructors"
+- Class cancellations → use cancel_class_with_notification to auto-notify RSVPs
+
+You have access to tools to check schedules, make RSVPs, manage instructors, and send alerts.
 
 User preferences: ${JSON.stringify(conversationState?.preferences || {})}
 
 Current context: ${conversationState?.context?.join(', ') || 'None'}
 
-Be friendly, concise, and helpful. When making RSVPs or checking schedules, use the available tools.`
+CRITICAL: When users ask to RSVP, book classes, cancel RSVPs, assign instructors, or perform any action - you MUST call the appropriate tool. Do not just acknowledge the request, actually execute it using the tools.
+
+RESPONSE RULE: Only provide a conversational response if you're answering a question or providing information. For actions like RSVPs or assignments, use tools first, then respond based on the results.
+
+Be friendly, concise, and helpful. When making RSVPs, checking schedules, or managing instructors, use the available tools.`
 
     // Build messages for OpenAI
     const messages: any[] = [
@@ -99,17 +149,24 @@ Be friendly, concise, and helpful. When making RSVPs or checking schedules, use 
         let formattedResult = ''
         
         if (tr.tool === 'get_schedule' && tr.result?.schedules) {
-          // For schedules, provide a concise summary
+          // For schedules, provide a concise summary with IDs
           const schedules = tr.result.schedules
-          formattedResult = `Found ${schedules.length} classes:\n` + 
-            schedules.slice(0, 20).map((s: any, idx: number) => 
-              `${idx + 1}. ${s.class_type} - ${s.day_of_week} ${s.start_time}-${s.end_time} with ${s.instructor_name || 'TBD'} (${s.level || 'All Levels'})${s.notes ? ' - ' + s.notes : ''}`
+          formattedResult = `Found ${schedules.length} classes:\n` +
+            schedules.slice(0, 20).map((s: any, idx: number) =>
+              `[ID: ${s.id}] ${idx + 1}. ${s.class_type} - ${s.day_of_week} ${s.start_time}-${s.end_time} with ${s.instructor_name || 'TBD'} (${s.level || 'All Levels'})${s.notes ? ' - ' + s.notes : ''}`
             ).join('\n') +
             (schedules.length > 20 ? `\n... and ${schedules.length - 20} more classes` : '')
+        } else if (tr.tool === 'find_next_class' && tr.result?.schedules) {
+          // For find_next_class, include IDs and provide clear schedule info
+          const schedules = tr.result.schedules
+          formattedResult = `Found ${schedules.length} ${tr.result.next_class_day} classes:\n` +
+            schedules.map((s: any, idx: number) =>
+              `[ID: ${s.id}] ${idx + 1}. ${s.class_type} - ${s.start_time}-${s.end_time} with ${s.instructor_name || 'TBD'} (${s.level || 'All Levels'})${s.notes ? ' - ' + s.notes : ''}`
+            ).join('\n')
         } else {
           // For other tools, stringify the result
-          formattedResult = typeof tr.result === 'string' 
-            ? tr.result 
+          formattedResult = typeof tr.result === 'string'
+            ? tr.result
             : JSON.stringify(tr.result, null, 2)
         }
         
@@ -140,8 +197,9 @@ Be friendly, concise, and helpful. When making RSVPs or checking schedules, use 
     })) || []
 
     // Call OpenAI API
-    // Don't include tools if we're processing tool results (to get final answer)
-    const shouldIncludeTools = (!toolResults || toolResults.length === 0) && openaiTools.length > 0
+    // IMPORTANT: Always include tools so AI can make follow-up tool calls after getting results
+    // This allows for multi-step operations like: 1) get_schedule, 2) rsvp_to_class
+    const shouldIncludeTools = openaiTools.length > 0
     
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

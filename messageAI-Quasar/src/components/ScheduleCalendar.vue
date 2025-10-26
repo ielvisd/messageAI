@@ -1,25 +1,54 @@
 <template>
   <div>
-    <!-- Calendar Header -->
+    <!-- Calendar Header with View Toggle -->
     <div class="row items-center q-mb-md">
-      <div class="text-h6">Weekly Schedule</div>
+      <div class="text-h6">Schedule</div>
       <q-space />
+      
+      <!-- View Selector - Only template view enabled for demo -->
+      <q-tabs v-model="currentView" dense class="q-mr-md">
+        <q-tab name="template" label="Template" icon="event_repeat" />
+        <!-- <q-tab name="month" label="Month" icon="calendar_month" /> -->
+        <!-- <q-tab name="week" label="Week" icon="view_week" /> -->
+      </q-tabs>
+      
       <q-btn
         v-if="editable"
         icon="add"
-        label="Create Class"
+        label="Create"
         color="primary"
-        @click="$emit('create-schedule')"
-      />
+        @click="showCreateMenu = true"
+      >
+        <q-menu v-model="showCreateMenu">
+          <q-list style="min-width: 200px">
+            <q-item clickable v-close-popup @click="$emit('create-schedule')">
+              <q-item-section avatar>
+                <q-icon name="event_repeat" />
+              </q-item-section>
+              <q-item-section>Recurring Class</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="showInstanceEditor = true">
+              <q-item-section avatar>
+                <q-icon name="event" />
+              </q-item-section>
+              <q-item-section>One-Time Event</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex flex-center q-pa-xl">
-      <q-spinner color="primary" size="3em" />
-    </div>
+    <!-- View Panels -->
+    <q-tab-panels v-model="currentView" animated>
+      <!-- Template View (Original Weekly Grid) -->
+      <q-tab-panel name="template" class="q-pa-none">
+        <!-- Loading State -->
+        <div v-if="loading" class="flex flex-center q-pa-xl">
+          <q-spinner color="primary" size="3em" />
+        </div>
 
-    <!-- Week View Grid -->
-    <div v-else class="schedule-grid">
+        <!-- Week View Grid -->
+        <div v-else class="schedule-grid">
       <div class="row q-col-gutter-sm">
         <div
           v-for="day in days"
@@ -87,7 +116,30 @@
       </div>
     </div>
 
-    <!-- Class Details Dialog -->
+      </q-tab-panel>
+
+      <!-- Month View - Temporarily disabled for demo -->
+      <!--
+      <q-tab-panel name="month" class="q-pa-none">
+        <ScheduleMonthView
+          :gym-id="gymId"
+          @view-class="viewInstance"
+        />
+      </q-tab-panel>
+      -->
+
+      <!-- Week View - Temporarily disabled for demo -->
+      <!--
+      <q-tab-panel name="week" class="q-pa-none">
+        <ScheduleWeekView
+          :gym-id="gymId"
+          @view-class="viewInstance"
+        />
+      </q-tab-panel>
+      -->
+    </q-tab-panels>
+
+    <!-- Class Details Dialog (for Template View) -->
     <q-dialog v-model="showDetails">
       <q-card style="min-width: 400px">
         <q-card-section>
@@ -185,15 +237,122 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Instance Details Dialog (for Month/Week Views) -->
+    <q-dialog v-model="showInstanceDetails" :position="$q.platform.is.mobile ? 'bottom' : 'standard'">
+      <q-card style="min-width: 400px">
+        <div v-if="$q.platform.is.mobile" class="swipe-indicator-bar" />
+        
+        <q-card-section>
+          <div class="text-h6">
+            {{ selectedInstance?.class_type?.toUpperCase() }}
+            <q-badge 
+              v-if="selectedInstance?.event_type !== 'class'" 
+              :label="selectedInstance?.event_type" 
+              color="purple"
+              class="q-ml-xs"
+            />
+          </div>
+          <div class="text-subtitle2 text-grey-7">{{ selectedInstance?.date }}</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-list>
+            <q-item>
+              <q-item-section avatar>
+                <q-icon name="schedule" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ formatTime(selectedInstance?.start_time) }} - {{ formatTime(selectedInstance?.end_time) }}</q-item-label>
+                <q-item-label caption>Time</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item v-if="selectedInstance?.instructor_name">
+              <q-item-section avatar>
+                <q-icon name="person" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>
+                  {{ selectedInstance?.instructor_name }}
+                  <q-icon 
+                    v-if="selectedInstance?.is_override" 
+                    name="swap_horiz" 
+                    size="xs" 
+                    color="orange"
+                  >
+                    <q-tooltip>Substitute Instructor</q-tooltip>
+                  </q-icon>
+                </q-item-label>
+                <q-item-label caption>Instructor</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item v-if="selectedInstance?.level">
+              <q-item-section avatar>
+                <q-icon name="bar_chart" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ selectedInstance?.level }}</q-item-label>
+                <q-item-label caption>Level</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item v-if="selectedInstance?.max_capacity">
+              <q-item-section avatar>
+                <q-icon name="people" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ selectedInstance?.current_rsvps }}/{{ selectedInstance?.max_capacity }}</q-item-label>
+                <q-item-label caption>Capacity</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item v-if="selectedInstance?.notes">
+              <q-item-section avatar>
+                <q-icon name="notes" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ selectedInstance?.notes }}</q-item-label>
+                <q-item-label caption>Notes</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <RsvpButton
+            v-if="canRsvp && selectedInstance && selectedInstance.schedule_id"
+            :schedule-id="selectedInstance.schedule_id"
+            :rsvp-date="selectedInstance.date"
+          />
+          <q-btn flat label="Close" color="grey" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Class Instance Editor -->
+    <ClassInstanceEditor
+      v-model="showInstanceEditor"
+      :gym-id="gymId"
+      :date="newInstanceDate"
+      mode="one-time"
+      @saved="onInstanceSaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
 import { useSchedule } from '../composables/useSchedule';
 import { useRoles } from '../composables/useRoles';
 import { user } from '../state/auth';
+import type { ClassInstance } from '../composables/useClassInstances';
 import RsvpButton from './RsvpButton.vue';
+import ScheduleMonthView from './ScheduleMonthView.vue';
+import ScheduleWeekView from './ScheduleWeekView.vue';
+import ClassInstanceEditor from './ClassInstanceEditor.vue';
 
 const props = defineProps<{
   gymId: string;
@@ -206,12 +365,19 @@ const emit = defineEmits<{
   'create-schedule': [];
 }>();
 
+const $q = useQuasar();
 const { schedulesByDay, loading, fetchSchedules, deleteSchedule } = useSchedule();
 const { isOwner, isInstructor, canRSVPToClasses } = useRoles();
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const currentView = ref('template');
 const showDetails = ref(false);
 const selectedSchedule = ref<any>(null);
+const showInstanceDetails = ref(false);
+const selectedInstance = ref<ClassInstance | null>(null);
+const showCreateMenu = ref(false);
+const showInstanceEditor = ref(false);
+const newInstanceDate = ref('');
 
 const canRsvp = computed(() => canRSVPToClasses.value);
 const canDelete = computed(() => isOwner.value);
@@ -442,6 +608,23 @@ async function deleteClass() {
   showDetails.value = false;
 }
 
+function viewInstance(instance: ClassInstance) {
+  selectedInstance.value = instance;
+  showInstanceDetails.value = true;
+}
+
+function onInstanceSaved() {
+  // Refresh the current view
+  if (currentView.value === 'template') {
+    const filters: any = { gym_id: props.gymId };
+    if (props.filteredInstructorId) {
+      filters.instructor_id = props.filteredInstructorId;
+    }
+    void fetchSchedules(filters);
+  }
+  // Month and Week views handle their own refreshing
+}
+
 onMounted(() => {
   const filters: any = { gym_id: props.gymId };
   if (props.filteredInstructorId) {
@@ -572,6 +755,14 @@ onMounted(() => {
   border-left-color: #607D8B;
   background: linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%);
   color: #37474F;
+}
+
+.swipe-indicator-bar {
+  width: 40px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin: 8px auto;
 }
 </style>
 

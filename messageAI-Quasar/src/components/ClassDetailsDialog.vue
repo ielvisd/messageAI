@@ -66,6 +66,8 @@
           v-model="showInstructorAssignment"
           icon="person_add"
           label="Assign Instructor"
+          header-class="text-primary"
+          :default-opened="!schedule?.instructor_id"
         >
           <q-card>
             <q-card-section>
@@ -283,13 +285,21 @@ const router = useRouter()
 const $q = useQuasar()
 const { canRSVPForClass } = useClassEligibility()
 const { getClassRoster, loading: rosterLoading } = useClassRoster()
-const { isInstructor, isOwner } = useRoles()
+const { isInstructor, isOwner, currentRole } = useRoles()
 const {
   loading: instructorLoading,
   getGymInstructors,
   assignInstructor,
   unassignInstructor
 } = useInstructorAssignment()
+
+// Debug: Log role status
+console.log('🔍 ClassDetailsDialog - Role check:', {
+  isOwner: isOwner.value,
+  isInstructor: isInstructor.value,
+  currentRole: currentRole.value,
+  userId: user.value?.id
+})
 
 const showRoster = ref(false)
 const rosterEntries = ref<any[]>([])

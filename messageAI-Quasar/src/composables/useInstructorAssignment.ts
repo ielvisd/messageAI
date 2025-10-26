@@ -28,20 +28,38 @@ export function useInstructorAssignment() {
    * Get all instructors for the current user's gym
    */
   async function getGymInstructors(gymId: string): Promise<Instructor[]> {
-    if (!gymId) return []
+    if (!gymId) {
+      console.warn('⚠️ getGymInstructors: No gymId provided')
+      return []
+    }
     
+    console.log('🔍 Fetching instructors for gym:', gymId)
     loading.value = true
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, instructor_preferences')
+        .select('id, name, email, instructor_preferences, role, gym_id')
         .eq('gym_id', gymId)
-        .eq('role', 'instructor')
+        .in('role', ['instructor', 'owner']) // Include both instructors and owners
         .order('name')
 
       if (error) {
-        console.error('Error fetching instructors:', error)
+        console.error('❌ Error fetching instructors:', error)
         return []
+      }
+
+      console.log(`✅ Found ${data?.length || 0} instructors for gym ${gymId}:`, data)
+      
+      if (!data || data.length === 0) {
+        console.warn('⚠️ No instructors found. Checking all profiles in this gym...')
+        
+        // Debug: Get all profiles for this gym regardless of role
+        const { data: allProfiles } = await supabase
+          .from('profiles')
+          .select('id, name, email, role, gym_id')
+          .eq('gym_id', gymId)
+        
+        console.log('📋 All profiles in gym:', allProfiles)
       }
 
       instructors.value = data || []

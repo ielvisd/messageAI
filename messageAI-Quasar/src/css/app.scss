@@ -1,95 +1,101 @@
 // app global css in SCSS form
 
-// Import Nunito font from Google Fonts
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+// Import Inter font from Google Fonts for a bold, athletic feel
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 // Import platform-specific styles
 @import './platform.scss';
 
-// Apply Nunito font for a friendlier, less corporate feel
+// Apply Inter font for a strong, modern, athletic aesthetic
 body {
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 400;
-  font-size: 16px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-// Make headings slightly bolder with Nunito
+// Make headings bold and impactful
 h1, h2, h3, h4, h5, h6,
 .text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6 {
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-// Reduce font sizes on desktop for less overwhelming appearance
+// Adjust font sizes on desktop for better readability
 @media (min-width: 768px) {
   body {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   h1, .text-h1 {
-    font-size: 2.25rem !important; // Smaller than default h1
+    font-size: 2.5rem !important;
   }
 
   h2, .text-h2 {
-    font-size: 1.875rem !important; // Smaller than default h2
+    font-size: 2rem !important;
   }
 
   h3, .text-h3 {
-    font-size: 1.5rem !important; // Smaller than default h3
+    font-size: 1.625rem !important;
   }
 
   h4, .text-h4 {
-    font-size: 1.25rem !important; // Smaller than default h4
+    font-size: 1.375rem !important;
   }
 
   h5, .text-h5 {
-    font-size: 1.125rem !important; // Smaller than default h5
+    font-size: 1.125rem !important;
   }
 
   h6, .text-h6 {
-    font-size: 1rem !important; // Smaller than default h6
+    font-size: 1rem !important;
   }
 }
 
-// Custom Ossome Color Utilities
-// Using the defined color palette: #2B2D42, #8D99AE, #EDF2F4, #EF233C, #D90429
+// Dark Gym Theme Color Utilities
+// Using the dark athletic palette: #1a1a1a, #2d2d2d, #ff8c00, #00d084, #0d0d0d, #262626
 
-.bg-light-gray {
-  background-color: #EDF2F4 !important;
+.bg-surface {
+  background-color: #262626 !important;
 }
 
-.text-light-gray {
-  color: #EDF2F4 !important;
+.text-surface {
+  color: #262626 !important;
 }
 
-.bg-cool-gray {
-  background-color: #8D99AE !important;
+.bg-dark-gray {
+  background-color: #2d2d2d !important;
 }
 
-.text-cool-gray {
-  color: #8D99AE !important;
+.text-dark-gray {
+  color: #2d2d2d !important;
 }
 
-.bg-dark-navy {
-  background-color: #2B2D42 !important;
+.bg-deep-black {
+  background-color: #1a1a1a !important;
 }
 
-.text-dark-navy {
-  color: #2B2D42 !important;
+.text-deep-black {
+  color: #1a1a1a !important;
 }
 
-.bg-bright-red {
-  background-color: #EF233C !important;
+.bg-strong-orange {
+  background-color: #ff8c00 !important;
 }
 
-.text-bright-red {
-  color: #EF233C !important;
+.text-strong-orange {
+  color: #ff8c00 !important;
 }
 
-.bg-deep-red {
-  background-color: #D90429 !important;
+.bg-vibrant-green {
+  background-color: #00d084 !important;
 }
 
-.text-deep-red {
-  color: #D90429 !important;
+.text-vibrant-green {
+  color: #00d084 !important;
+}
+
+.text-secondary-light {
+  color: #b0b0b0 !important;
 }

@@ -1,13 +1,13 @@
 import { computed } from 'vue';
-import { user } from '../state/auth';
+import { user, profile } from '../state/auth';
 
 export type UserRole = 'owner' | 'instructor' | 'student' | 'parent' | null;
 
 export function useRoles() {
   const currentRole = computed<UserRole>(() => {
-    if (!user.value) return null;
-    // Assuming role is stored in user metadata or profile
-    return (user.value as any).role || null;
+    if (!user.value || !profile.value) return null;
+    // Role is stored in the profile, not the auth user object
+    return (profile.value.role as UserRole) || null;
   });
 
   const isOwner = computed(() => currentRole.value === 'owner');

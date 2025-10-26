@@ -53,7 +53,7 @@ export function useStudentNotes() {
       if (insertError) throw insertError
       if (!data) throw new Error('Failed to create note')
 
-      return data as any
+      return data
     } catch (err) {
       console.error('Error creating note:', err)
       error.value = (err as Error).message
@@ -144,7 +144,7 @@ export function useStudentNotes() {
       if (updateError) throw updateError
       if (!data) throw new Error('Failed to update note')
 
-      return data as any
+      return data
     } catch (err) {
       console.error('Error updating note:', err)
       error.value = (err as Error).message

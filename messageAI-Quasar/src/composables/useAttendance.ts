@@ -108,7 +108,7 @@ export function useAttendance() {
 
       console.log('✅ Check-in successful:', data)
 
-      return data as any
+      return data
     } catch (err) {
       console.error('❌ Error checking in:', err)
       error.value = (err as Error).message
@@ -137,7 +137,7 @@ export function useAttendance() {
       })
 
       if (rpcError) throw rpcError
-      return data as any
+      return data
     } catch (err) {
       console.error('Error marking attendance:', err)
       error.value = (err as Error).message
@@ -172,7 +172,7 @@ export function useAttendance() {
       })
 
       if (rpcError) throw rpcError
-      return (data || []) as any
+      return (data || [])
     } catch (err) {
       console.error('Error getting class attendance:', err)
       error.value = (err as Error).message
@@ -295,7 +295,7 @@ export function useAttendance() {
       })
 
       if (rpcError) throw rpcError
-      return data as any
+      return data
     } catch (err) {
       console.error('Error getting attendance stats:', err)
       error.value = (err as Error).message
@@ -324,7 +324,7 @@ export function useAttendance() {
       })
 
       if (rpcError) throw rpcError
-      return (data || []) as any
+      return (data || [])
     } catch (err) {
       console.error('Error getting gym report:', err)
       error.value = (err as Error).message

@@ -1,0 +1,13 @@
+{
+  "buildCommand": "pnpm build -m pwa",
+  "outputDirectory": "dist/pwa",
+  "framework": null,
+  "installCommand": "pnpm install",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
+
