@@ -9,6 +9,13 @@ const routes: RouteRecordRaw[] = [
       { path: '', component: () => import('pages/LandingPage.vue') }
     ]
   },
+  // Unified Dashboard (authenticated users)
+  {
+    path: '/home',
+    component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('pages/UnifiedDashboard.vue') }],
+  },
   {
     path: '/login',
     component: () => import('layouts/AuthLayout.vue'),

@@ -26,24 +26,6 @@
       </q-btn>
     </div>
 
-    <!-- Info Banner -->
-    <q-banner v-if="!hasStarted" class="bg-dark-gray text-white">
-      <template #avatar>
-        <q-icon name="info" color="accent" />
-      </template>
-      <div class="text-body2">
-        <strong style="color: #ff8c00;">5 AI Capabilities:</strong>
-        <ul class="q-my-sm q-pl-md">
-          <li><strong>Conversation History (RAG)</strong>: I remember our past conversations</li>
-          <li><strong>User Preferences</strong>: I learn and adapt to your preferences</li>
-          <li><strong>Function Calling</strong>: I can check schedules, make RSVPs, and more</li>
-          <li><strong>Memory & State</strong>: I maintain context across our interactions</li>
-          <li><strong>Error Handling</strong>: I gracefully recover from issues</li>
-        </ul>
-        <span class="text-secondary-light">Try asking: "What classes are available tomorrow?" or "RSVP me to the next Gi class"</span>
-      </div>
-    </q-banner>
-
     <!-- Chat Messages -->
     <div class="col q-pa-md messages-container" style="overflow-y: auto; background: #0d0d0d;">
       <!-- Welcome Message -->
@@ -122,7 +104,10 @@
     </div>
 
     <!-- Input Area -->
-    <div class="q-pa-md input-area" style="background: #1a1a1a; border-top: 2px solid #2d2d2d;">
+    <div 
+      class="q-pa-md input-area" 
+      style="background: #1a1a1a; border-top: 2px solid #2d2d2d; padding-bottom: calc(16px + env(safe-area-inset-bottom));"
+    >
       <!-- Suggestions -->
       <div v-if="messages.length > 0" class="q-mb-sm">
         <q-chip
@@ -156,6 +141,22 @@
           bg-color="dark-gray"
           input-style="color: white; font-size: 15px;"
         />
+        
+        <!-- Voice Button (iOS-optimized) -->
+        <q-btn
+          v-if="isVoiceSupported"
+          round
+          :color="isListening ? 'negative' : 'accent'"
+          :icon="isListening ? 'mic' : 'mic_none'"
+          @click="toggleVoice"
+          :disable="loading"
+          size="md"
+          :class="{ 'pulse-animation': isListening }"
+          style="min-width: 44px; min-height: 44px;"
+        >
+          <q-tooltip>{{ isListening ? 'Listening...' : 'Voice input' }}</q-tooltip>
+        </q-btn>
+        
         <q-btn
           round
           color="accent"
@@ -165,6 +166,7 @@
           :disable="!newMessage.trim() || loading"
           size="md"
           class="send-btn"
+          style="min-width: 44px; min-height: 44px;"
         />
       </div>
     </div>
@@ -172,8 +174,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useGymAI } from '../composables/useGymAI';
+import { useVoiceInput } from '../composables/useVoiceInput';
 import { profile } from '../state/auth';
 import { Notify } from 'quasar';
 import { marked } from 'marked';
@@ -189,8 +192,20 @@ const {
   initialize
 } = useGymAI();
 
+const { 
+  isListening, 
+  transcript, 
+  isSupported: isVoiceSupported, 
+  startListening, 
+  stopListening 
+} = useVoiceInput();
+
 const newMessage = ref('');
-const hasStarted = ref(false);
+
+// Watch transcript and update input
+watch(transcript, (newValue) => {
+  newMessage.value = newValue
+});
 
 // Configure marked for secure markdown rendering
 marked.setOptions({
@@ -249,7 +264,6 @@ async function handleSendMessage() {
 
   const messageText = newMessage.value.trim();
   newMessage.value = '';
-  hasStarted.value = true;
 
   try {
     await sendMessage(messageText, gymId.value);
@@ -266,9 +280,21 @@ async function sendQuickMessage(message: string) {
   await handleSendMessage();
 }
 
+function toggleVoice() {
+  if (isListening.value) {
+    stopListening();
+    // Auto-submit after stopping if there's content
+    if (newMessage.value.trim()) {
+      setTimeout(() => handleSendMessage(), 500);
+    }
+  } else {
+    newMessage.value = ''; // Clear before starting
+    startListening();
+  }
+}
+
 function startNewConversation() {
   messages.value = [];
-  hasStarted.value = false;
   Notify.create({
     type: 'info',
     message: 'Started new conversation'
@@ -443,6 +469,20 @@ onMounted(() => {
 .send-btn:hover:not(:disabled) {
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(255, 140, 0, 0.4);
+}
+
+/* Voice Input Pulse Animation */
+.pulse-animation {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Messages Container */

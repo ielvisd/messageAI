@@ -66,26 +66,8 @@
 // =============================================
 // iOS Safe Area Support
 // =============================================
-// Handle notched devices (iPhone X and newer)
-.q-page {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
-
-.q-header {
-  padding-top: env(safe-area-inset-top);
-}
-
-.q-footer {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.q-drawer {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-}
+// Quasar components now handle safe areas natively
+// Only need to handle specific cases like fixed positioned elements
 
 // Fixed action buttons (like FAB)
 .fixed-bottom-right {
@@ -174,11 +156,7 @@ body.body--dark {
 // PWA-specific styles
 // =============================================
 .standalone {
-  // When installed as PWA
-  .q-header {
-    // Add extra padding for status bar
-    padding-top: calc(env(safe-area-inset-top) + 8px);
-  }
+  // PWA-specific adjustments handled by Quasar natively
 }
 
 // =============================================

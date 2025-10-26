@@ -72,62 +72,13 @@
           Navigation
         </q-item-label>
 
-        <!-- Role-Based Navigation -->
-        <q-item v-if="userRole === 'owner'" clickable @click="navigate('/dashboard')">
+        <!-- Unified Navigation -->
+        <q-item clickable @click="navigate('/')">
           <q-item-section avatar>
             <q-icon name="dashboard" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Dashboard</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-item v-if="userRole === 'owner'" clickable @click="navigate('/settings')">
-          <q-item-section avatar>
-            <q-icon name="settings" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Settings</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-item v-if="userRole === 'instructor'" clickable @click="navigate('/instructor-dashboard')">
-          <q-item-section avatar>
-            <q-icon name="fitness_center" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>My Classes</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-item v-if="userRole === 'parent'" clickable @click="navigate('/parent-dashboard')">
-          <q-item-section avatar>
-            <q-icon name="child_care" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Kids Dashboard</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <!-- Training Dashboard (all roles) -->
-        <q-item clickable @click="navigate('/student/dashboard')">
-          <q-item-section avatar>
-            <q-icon name="insights" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Training Stats</q-item-label>
-            <q-item-label caption>My attendance & progress</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-separator class="q-my-md" />
-
-        <q-item clickable @click="navigate('/chats')">
-          <q-item-section avatar>
-            <q-icon name="chat" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Messages</q-item-label>
           </q-item-section>
         </q-item>
 
@@ -140,6 +91,15 @@
           </q-item-section>
         </q-item>
 
+        <q-item clickable @click="navigate('/chats')">
+          <q-item-section avatar>
+            <q-icon name="chat" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Messages</q-item-label>
+          </q-item-section>
+        </q-item>
+
         <q-item clickable @click="navigate('/ai-assistant')">
           <q-item-section avatar>
             <q-icon name="smart_toy" />
@@ -148,12 +108,26 @@
             <q-item-label>AI Assistant</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-separator v-if="userRole === 'owner'" class="q-my-md" />
+
+        <q-item v-if="userRole === 'owner'" clickable @click="navigate('/settings')">
+          <q-item-section avatar>
+            <q-icon name="settings" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Settings</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
     <q-page-container>
       <router-view />
     </q-page-container>
+    
+    <!-- AI Insights Widget (only for owners/instructors) -->
+    <AIInsightsWidget v-if="userRole === 'owner' || userRole === 'instructor'" />
     
     <!-- Profile Picture Editor Dialog -->
     <ProfilePictureEditor 
@@ -172,6 +146,7 @@ import { supabase } from '../boot/supabase'
 import { usePresence } from '../composables/usePresence'
 import { usePushNotifications } from '../composables/usePushNotifications'
 import ProfilePictureEditor from '../components/ProfilePictureEditor.vue'
+import AIInsightsWidget from '../components/AIInsightsWidget.vue'
 import { Notify } from 'quasar'
 
 // Initialize presence system (runs for entire app session)

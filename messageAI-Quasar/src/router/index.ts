@@ -74,29 +74,14 @@ export default defineRouter(function (/* { store, ssrContext } */) {
         // Special case: If owner role but no gymId, they might have owned_gym_ids
         // The dashboard will handle gym selection
         if (role === 'owner' && !gymId && ownedGymIds.length > 0) {
-          console.log('➡️ Owner with multiple gyms, redirecting to dashboard')
-          next('/dashboard')
+          console.log('➡️ Owner with multiple gyms, redirecting to unified dashboard')
+          next('/home')
           return
         }
 
-        // Redirect based on role
-        console.log('➡️ Has role/gym, redirecting to dashboard')
-        switch (role) {
-          case 'owner':
-            next('/dashboard')
-            break
-          case 'instructor':
-            next('/instructor-dashboard')
-            break
-          case 'parent':
-            next('/parent-dashboard')
-            break
-          case 'student':
-            next('/chats')
-            break
-          default:
-            next('/chats')
-        }
+        // Redirect to unified dashboard
+        console.log('➡️ Has role/gym, redirecting to unified dashboard')
+        next('/home')
         return
       }
       // Not authenticated, allow to proceed to login
@@ -131,27 +116,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       
       // Special case: If owner role but no gymId, they might have owned_gym_ids
       if (role === 'owner' && !gymId && ownedGymIds.length > 0) {
-        next('/dashboard')
+        next('/home')
         return
       }
 
-      // Redirect based on role
-      switch (role) {
-        case 'owner':
-          next('/dashboard')
-          break
-        case 'instructor':
-          next('/instructor-dashboard')
-          break
-        case 'parent':
-          next('/parent-dashboard')
-          break
-        case 'student':
-          next('/chats')
-          break
-        default:
-          next('/chats')
-      }
+      // Redirect to unified dashboard
+      next('/home')
       return
     }
 
@@ -180,20 +150,8 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     if (to.meta.requiresRole) {
       const userRole = (profile.value as any)?.role || (user.value as any)?.role
       if (userRole !== to.meta.requiresRole) {
-        // Redirect to their home
-        switch (userRole) {
-          case 'owner':
-            next('/dashboard')
-            break
-          case 'instructor':
-            next('/instructor-dashboard')
-            break
-          case 'parent':
-            next('/parent-dashboard')
-            break
-          default:
-            next('/chats')
-        }
+        // Redirect to unified dashboard
+        next('/home')
         return
       }
     }
@@ -205,8 +163,8 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       const role = (profile.value as any)?.role || (user.value as any)?.role
       
       if (gymId || ownedGymIds.length > 0) {
-        // Already has gym or owns gyms, redirect to dashboard
-        next(role === 'owner' ? '/dashboard' : '/chats')
+        // Already has gym or owns gyms, redirect to unified dashboard
+        next('/home')
         return
       }
     }

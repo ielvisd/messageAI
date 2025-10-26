@@ -126,6 +126,132 @@
           </q-card-section>
         </q-card>
 
+        <!-- Gym QR Code -->
+        <q-card>
+          <q-expansion-item 
+            label="Gym QR Code"
+            icon="qr_code"
+            header-class="text-h6"
+            default-opened
+          >
+            <q-card-section>
+              <div class="text-caption text-grey-7 q-mb-md">Students can scan this to join your gym</div>
+              
+              <div class="text-center">
+                <div v-if="qrCodeURL">
+                  <img :src="qrCodeURL" alt="Gym QR Code" style="max-width: 300px; width: 100%;" />
+                  
+                  <!-- Join Link -->
+                  <div class="q-mt-md">
+                    <div class="text-caption text-grey-7 q-mb-xs">Join Link</div>
+                    <q-input
+                      :model-value="joinURL"
+                      readonly
+                      outlined
+                      dense
+                    >
+                      <template v-slot:append>
+                        <q-btn
+                          icon="content_copy"
+                          flat
+                          dense
+                          round
+                          @click="copyJoinURL"
+                        >
+                          <q-tooltip>Copy Link</q-tooltip>
+                        </q-btn>
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+                <div v-else class="q-pa-md">
+                  <q-spinner-hourglass color="primary" size="50px" />
+                  <div class="text-caption q-mt-sm">Loading QR code...</div>
+                </div>
+                
+                <div class="q-mt-md q-gutter-sm">
+                  <q-btn
+                    label="Print Flyer"
+                    icon="print"
+                    color="primary"
+                    unelevated
+                    @click="showPrintDialog = true"
+                    :disable="!qrCodeURL"
+                  />
+                  <q-btn
+                    label="Download QR"
+                    icon="download"
+                    outline
+                    color="primary"
+                    @click="downloadQR"
+                    :disable="!qrCodeURL"
+                  />
+                  <q-btn
+                    label="Regenerate"
+                    icon="refresh"
+                    outline
+                    color="primary"
+                    @click="regenerateQR"
+                    :loading="regeneratingQR"
+                  />
+                </div>
+              </div>
+              
+              <q-separator class="q-my-md" />
+              
+              <q-toggle 
+                v-model="requireApproval" 
+                label="Require admin approval for new members"
+                @update:model-value="updateApprovalSetting"
+              />
+              
+              <!-- Pending Requests -->
+              <div v-if="requireApproval && pendingRequests.length > 0" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">Pending Join Requests ({{ pendingRequests.length }})</div>
+                <q-list bordered separator>
+                  <q-item v-for="request in pendingRequests" :key="request.id">
+                    <q-item-section avatar>
+                      <q-avatar>
+                        <img v-if="request.profiles?.avatar_url" :src="request.profiles.avatar_url" />
+                        <q-icon v-else name="person" />
+                      </q-avatar>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ request.profiles?.name || 'Unknown' }}</q-item-label>
+                      <q-item-label caption>{{ request.profiles?.email }}</q-item-label>
+                      <q-item-label caption class="text-grey-6">
+                        Requested {{ formatDate(request.created_at) }}
+                      </q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <div class="q-gutter-xs">
+                        <q-btn
+                          color="positive"
+                          icon="check"
+                          round
+                          dense
+                          @click="approveRequest(request.id)"
+                        >
+                          <q-tooltip>Approve</q-tooltip>
+                        </q-btn>
+                        <q-btn
+                          color="negative"
+                          icon="close"
+                          round
+                          dense
+                          @click="rejectRequest(request.id)"
+                        >
+                          <q-tooltip>Reject</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </q-card-section>
+          </q-expansion-item>
+        </q-card>
+
         <!-- Messaging Rules -->
         <q-card>
           <q-card-section>
@@ -278,6 +404,69 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Print Flyer Dialog -->
+    <q-dialog v-model="showPrintDialog" full-width>
+      <q-card>
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Print Gym Join Flyer</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <div id="print-flyer" class="print-flyer">
+            <div class="text-center q-pa-xl">
+              <!-- Gym Name -->
+              <h1 class="text-h3 q-mb-md" style="color: #1976D2;">{{ gym?.name || 'Join Our Gym' }}</h1>
+              
+              <!-- Tagline -->
+              <p class="text-h6 text-grey-7 q-mb-xl">
+                Scan the QR code to join our community
+              </p>
+              
+              <!-- QR Code -->
+              <div class="q-mb-xl">
+                <img :src="qrCodeURL" alt="Join QR Code" style="width: 400px; height: 400px;" />
+              </div>
+              
+              <!-- Join URL -->
+              <div class="q-mb-lg">
+                <div class="text-subtitle2 text-grey-7 q-mb-sm">Or visit:</div>
+                <div class="text-h6 text-weight-bold" style="word-break: break-all;">
+                  {{ joinURL }}
+                </div>
+              </div>
+              
+              <!-- Locations -->
+              <div v-if="gym?.locations && (gym.locations as any[]).length" class="q-mt-xl">
+                <div class="text-h6 q-mb-md">Our Locations</div>
+                <div v-for="(location, index) in (gym.locations as any[])" :key="index" class="q-mb-sm">
+                  <div class="text-weight-bold">{{ (location as any).name }}</div>
+                  <div class="text-grey-7">{{ (location as any).address }}</div>
+                </div>
+              </div>
+              
+              <!-- Footer -->
+              <div class="q-mt-xl text-caption text-grey-6">
+                Questions? Contact your gym administrator
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn label="Cancel" flat v-close-popup />
+          <q-btn 
+            label="Print" 
+            color="primary" 
+            unelevated
+            icon="print"
+            @click="doPrint"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -286,6 +475,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useGymSettings } from '../composables/useGymSettings';
 import { useGym } from '../composables/useGym';
 import { useGymSwitcher } from '../composables/useGymSwitcher';
+import { useGymQR } from '../composables/useGymQR';
 import { user } from '../state/auth';
 import { Notify } from 'quasar';
 
@@ -294,6 +484,7 @@ const gymId = computed(() => (user.value as any)?.gym_id || '');
 const { settings, fetchSettings, updateSettings } = useGymSettings(gymId.value);
 const { gym, fetchGym, updateGym } = useGym(gymId.value);
 const { ownedGyms, currentGymId, loadOwnedGyms, switchGym: switchToGym, createNewGym: createGym } = useGymSwitcher();
+const { generateQRCodeURL, regenerateQRToken, getPendingRequests, handleJoinRequest } = useGymQR();
 
 const loading = ref(false);
 const savingSettings = ref(false);
@@ -311,6 +502,14 @@ const newGymForm = ref({
   locationName: '',
   locationAddress: ''
 });
+
+// QR Code
+const qrCodeURL = ref('');
+const joinURL = ref('');
+const requireApproval = ref(false);
+const pendingRequests = ref<any[]>([]);
+const regeneratingQR = ref(false);
+const showPrintDialog = ref(false);
 
 function addLocation() {
   if (newLocation.value.name && newLocation.value.address) {
@@ -442,10 +641,160 @@ async function createNewGym() {
   }
 }
 
+// QR Code Functions
+async function loadQRCode() {
+  if (!gymId.value) return;
+  
+  try {
+    const result = await generateQRCodeURL(gymId.value);
+    qrCodeURL.value = result.qrCodeURL;
+    joinURL.value = result.joinURL;
+  } catch (err) {
+    console.error('Error loading QR code:', err);
+  }
+}
+
+async function regenerateQR() {
+  if (!gymId.value) return;
+  
+  regeneratingQR.value = true;
+  try {
+    await regenerateQRToken(gymId.value);
+    await loadQRCode();
+    Notify.create({
+      type: 'positive',
+      message: 'QR code regenerated successfully'
+    });
+  } catch (err) {
+    console.error('Error regenerating QR:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to regenerate QR code'
+    });
+  } finally {
+    regeneratingQR.value = false;
+  }
+}
+
+function copyJoinURL() {
+  navigator.clipboard.writeText(joinURL.value);
+  Notify.create({
+    type: 'positive',
+    message: 'Join URL copied to clipboard',
+    timeout: 1000
+  });
+}
+
+function downloadQR() {
+  const link = document.createElement('a');
+  link.download = `${gym.value?.name || 'gym'}-qr-code.png`;
+  link.href = qrCodeURL.value;
+  link.click();
+}
+
+function doPrint() {
+  const content = document.getElementById('print-flyer');
+  if (!content) return;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Print Gym Flyer</title>
+        <style>
+          body { font-family: Arial, sans-serif; }
+          @media print {
+            body { margin: 0; padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        ${content.innerHTML}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+async function updateApprovalSetting() {
+  if (!gymId.value) return;
+  
+  try {
+    await updateSettings(gymId.value, { ...settings.value, requireApproval: requireApproval.value });
+    Notify.create({
+      type: 'positive',
+      message: 'Approval setting updated'
+    });
+  } catch (err) {
+    console.error('Error updating approval setting:', err);
+  }
+}
+
+async function loadPendingRequests() {
+  if (!gymId.value || !requireApproval.value) return;
+  
+  try {
+    pendingRequests.value = await getPendingRequests(gymId.value);
+  } catch (err) {
+    console.error('Error loading pending requests:', err);
+  }
+}
+
+async function approveRequest(requestId: string) {
+  try {
+    await handleJoinRequest(requestId, 'approved');
+    Notify.create({
+      type: 'positive',
+      message: 'Member approved'
+    });
+    await loadPendingRequests();
+  } catch (err) {
+    console.error('Error approving request:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to approve member'
+    });
+  }
+}
+
+async function rejectRequest(requestId: string) {
+  try {
+    await handleJoinRequest(requestId, 'rejected');
+    Notify.create({
+      type: 'info',
+      message: 'Request rejected'
+    });
+    await loadPendingRequests();
+  } catch (err) {
+    console.error('Error rejecting request:', err);
+    Notify.create({
+      type: 'negative',
+      message: 'Failed to reject request'
+    });
+  }
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString();
+}
+
 onMounted(() => {
   if (gymId.value) {
     void loadData();
+    void loadQRCode();
+    void loadPendingRequests();
   }
 });
 </script>
+
+<style scoped>
+@media print {
+  .print-flyer {
+    page-break-inside: avoid;
+  }
+}
+</style>
 

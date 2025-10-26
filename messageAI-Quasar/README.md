@@ -267,7 +267,25 @@ pnpm dev
 - "RSVP me to the next GI class"
 - "Are there any problems with this week?"
 - "Who are the instructors?" (owner only)
-- "Assign John Silva to Monday 7pm GI" (owner only)
+- "Assign Carlos to Monday 7pm GI" (owner only)
+```
+
+### Demo Video Setup
+
+```bash
+# 1. Seed demo data
+pnpm db:apply demo_final_seed.sql
+
+# 2. Verify everything is ready
+pnpm db:apply VERIFY_DEMO_DATA.sql
+
+# 3. Open demo script
+# See FINAL_DEMO_SCRIPT.md for complete recording guide
+
+# Demo accounts (password: demo123456):
+# - owner@jiujitsio.com (iPad - Owner)
+# - carlos.martinez@jiujitsio.com (iPhone 1 - Instructor)
+# - ana.rodriguez@jiujitsio.com (iPhone 2 - Instructor)
 ```
 
 ---
@@ -405,11 +423,19 @@ messageAI-Quasar/
 
 ## 📚 Documentation
 
-- **Demo Script:** `DEMO_SCRIPT.md` - Full 7-minute demo walkthrough
+### Demo Video Resources
+- **🎬 DEMO_README.md** - START HERE for complete demo guide overview
+- **FINAL_DEMO_SCRIPT.md** - Complete 5-7 minute script with timestamps and narration
+- **PRE_DEMO_CHECKLIST.md** - Step-by-step setup before recording
+- **DEMO_QUICK_REFERENCE.md** - One-page cheat sheet (print this!)
+- **demo_final_seed.sql** - Seed all required test data
+- **VERIFY_DEMO_DATA.sql** - Verify everything is ready
+
+### Technical Documentation
 - **AI Implementation:** `AI_INSTRUCTOR_IMPLEMENTATION_SUMMARY.md`
-- **Database Workflow:** `DATABASE_WORKFLOW.md`
 - **PRD:** `/PRD.md` - Product requirements document
 - **Task List:** `/tasks.md` - Feature completion tracking
+- **Original Demo Script:** `DEMO_SCRIPT.md` - Earlier demo walkthrough
 
 ---
 
