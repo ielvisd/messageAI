@@ -78,17 +78,19 @@
             ></div>
             
             <!-- Suggested Actions -->
-            <div v-if="message.suggested_actions && message.suggested_actions.length > 0" class="q-mt-md q-gutter-xs">
+            <div v-if="message.suggested_actions && message.suggested_actions.length > 0" class="q-mt-md row q-gutter-sm">
               <q-btn
                 v-for="(action, idx) in message.suggested_actions"
                 :key="`${index}-action-${idx}`"
                 :label="action.label"
                 :icon="action.icon"
-                :color="action.color"
-                size="sm"
+                :color="getActionColor(action)"
+                size="md"
                 unelevated
+                no-caps
                 @click="handleActionClick(action)"
                 class="action-button"
+                style="min-width: 140px;"
               />
             </div>
             
@@ -468,34 +470,172 @@ async function viewInstructorSchedule(instructorId: string) {
   });
 }
 
-// Handle action button clicks - Fill input and auto-send
+// Get color based on action type
+function getActionColor(action: any): string {
+  // Use different colors for different action types for better visual distinction
+  switch (action.type) {
+    case 'assign_instructor':
+      return 'blue'; // Blue for assignments
+    case 'reschedule_class':
+      return 'purple'; // Purple for reschedule
+    case 'cancel_class':
+      return 'deep-orange'; // Deep orange for cancel
+    default:
+      return action.color || 'primary';
+  }
+}
+
+// Handle action button clicks - Execute actions directly
 async function handleActionClick(action: any) {
   console.log('🎬 Handling action:', action);
   
-  let prompt = '';
-  
-  // Generate the perfect prompt based on action type
   switch (action.type) {
     case 'assign_instructor':
-      prompt = `Yes, assign ${action.params.instructor_name} to this class.`;
-      break;
-    case 'message_instructors':
-      prompt = 'I want to message the instructors about this.';
+      await handleAssignInstructor(action);
       break;
     case 'reschedule_class':
-      prompt = 'I want to reschedule this class to a better time.';
+      await handleRescheduleClass(action);
       break;
     case 'cancel_class':
-      prompt = 'Please cancel this class and notify anyone who has RSVPed.';
+      await handleCancelClass(action);
       break;
     default:
       console.warn('Unknown action type:', action.type);
       return;
   }
+}
+
+// Direct action handlers
+async function handleAssignInstructor(action: any) {
+  if (!gymId.value) return;
   
-  // Fill the input and auto-send
-  newMessage.value = prompt;
+  // Show confirmation
+  Dialog.create({
+    title: 'Assign Instructor',
+    message: `Assign ${action.params.instructor_name} to ${action.params.class_info}?`,
+    cancel: true,
+    persistent: false,
+    color: 'primary'
+  }).onOk(async () => {
+    loading.value = true;
+    
+    try {
+      // Call the tool directly
+      const result = await executeTool('assign_instructor_to_class', {
+        schedule_id: action.params.schedule_id,
+        instructor_id: action.params.instructor_id,
+        assignment_type: 'recurring_weekly'
+      }, gymId.value);
+      
+      if (result.error) {
+        throw new Error(result.message || 'Failed to assign instructor');
+      }
+      
+      // Add success message to chat
+      messages.value.push({
+        role: 'assistant',
+        content: `✅ Successfully assigned **${action.params.instructor_name}** to the ${action.params.class_info} class!`,
+        timestamp: new Date().toISOString()
+      });
+      
+      Notify.create({
+        type: 'positive',
+        message: `Instructor assigned successfully!`,
+        icon: 'check_circle'
+      });
+      
+      // Trigger a refresh of AI insights to update alert count
+      window.dispatchEvent(new CustomEvent('refresh-ai-insights'));
+    } catch (error) {
+      console.error('Error assigning instructor:', error);
+      
+      Notify.create({
+        type: 'negative',
+        message: error instanceof Error ? error.message : 'Failed to assign instructor',
+        icon: 'error'
+      });
+      
+      // Add error message to chat
+      messages.value.push({
+        role: 'assistant',
+        content: `❌ Failed to assign instructor: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      loading.value = false;
+    }
+  });
+}
+
+async function handleRescheduleClass(action: any) {
+  // For now, send a prompt to get AI assistance with rescheduling
+  newMessage.value = `I want to reschedule the ${action.params.class_info} class to a better time.`;
   await handleSendMessage();
+}
+
+async function handleCancelClass(action: any) {
+  if (!gymId.value) return;
+  
+  // Show confirmation with reason input
+  Dialog.create({
+    title: 'Cancel Class',
+    message: `Cancel ${action.params.class_info}?`,
+    prompt: {
+      model: '',
+      type: 'text',
+      label: 'Reason for cancellation',
+      filled: true
+    },
+    cancel: true,
+    persistent: false,
+    color: 'negative'
+  }).onOk(async (reason: string) => {
+    loading.value = true;
+    
+    try {
+      // Call the cancel tool directly
+      const result = await executeTool('cancel_class_with_notification', {
+        schedule_id: action.params.schedule_id,
+        reason: reason || 'Class cancelled',
+        notify_members: true
+      }, gymId.value);
+      
+      if (result.error) {
+        throw new Error(result.message || 'Failed to cancel class');
+      }
+      
+      // Add success message to chat
+      const affectedCount = result.affected_members || 0;
+      messages.value.push({
+        role: 'assistant',
+        content: `✅ Successfully cancelled the ${action.params.class_info} class. ${affectedCount} member${affectedCount !== 1 ? 's' : ''} ${affectedCount !== 1 ? 'have' : 'has'} been notified.`,
+        timestamp: new Date().toISOString()
+      });
+      
+      Notify.create({
+        type: 'positive',
+        message: 'Class cancelled and members notified',
+        icon: 'check_circle'
+      });
+    } catch (error) {
+      console.error('Error cancelling class:', error);
+      
+      Notify.create({
+        type: 'negative',
+        message: error instanceof Error ? error.message : 'Failed to cancel class',
+        icon: 'error'
+      });
+      
+      // Add error message to chat
+      messages.value.push({
+        role: 'assistant',
+        content: `❌ Failed to cancel class: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      loading.value = false;
+    }
+  });
 }
 
 // Extracted function to handle fresh sessions and alert context
@@ -538,7 +678,11 @@ function handleFreshSessionAndAlerts() {
       let suggestedMessage = '';
       
       if (alert.title?.toLowerCase().includes('instructor')) {
-        suggestedMessage = `I need help fixing this scheduling issue: ${alert.description}. Can you help me assign an instructor?`;
+        // Include schedule info if available for better AI context
+        const scheduleInfo = alert.metadata?.schedule ? 
+          ` (Class: ${alert.metadata.schedule.class_type} on ${alert.metadata.schedule.day_of_week} at ${alert.metadata.schedule.start_time})` : 
+          '';
+        suggestedMessage = `I need help fixing this scheduling issue: ${alert.description}${scheduleInfo}. Can you help me assign an instructor?`;
       } else if (alert.title?.toLowerCase().includes('capacity')) {
         suggestedMessage = `There's a capacity issue: ${alert.description}. What should I do?`;
       } else {
@@ -804,18 +948,21 @@ watch(() => route.query.t, (newVal, oldVal) => {
 
 /* Action Buttons */
 .action-button {
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  border-radius: 8px !important;
+  letter-spacing: 0.3px;
 }
 
 .action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
 
 .action-button:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
 }
 </style>
 

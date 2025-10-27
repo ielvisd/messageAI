@@ -1,8 +1,9 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-gutter-md">
-      <div class="row items-center justify-between q-mb-md">
-        <div class="text-h4">My Classes</div>
+      <div class="text-h4 q-mb-lg">My Classes</div>
+      
+      <div class="row items-center q-gutter-sm q-mb-md">
         <q-btn
           color="primary"
           label="View Class Rosters"
@@ -10,6 +11,30 @@
           @click="$router.push('/class-roster')"
           outline
         />
+        <q-btn
+          v-if="canEditSchedule"
+          icon="add"
+          label="Create"
+          color="primary"
+          @click="showCreateMenu = true"
+        >
+          <q-menu v-model="showCreateMenu">
+            <q-list style="min-width: 200px">
+              <q-item clickable v-close-popup @click="showScheduleEditor = true">
+                <q-item-section avatar>
+                  <q-icon name="event_repeat" />
+                </q-item-section>
+                <q-item-section>Recurring Class</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="showInstanceEditor = true">
+                <q-item-section avatar>
+                  <q-icon name="event" />
+                </q-item-section>
+                <q-item-section>One-Time Event</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </div>
 
       <!-- Tabs -->
@@ -31,6 +56,7 @@
         <!-- Schedule Tab -->
         <q-tab-panel name="schedule">
           <ScheduleCalendar
+            :key="scheduleKey"
             :gym-id="gymId"
             :filtered-instructor-id="userId"
             :editable="canEditSchedule"
@@ -109,6 +135,14 @@
       @saved="onScheduleSaved"
     />
 
+    <!-- Class Instance Editor -->
+    <ClassInstanceEditor
+      v-model="showInstanceEditor"
+      :gym-id="gymId"
+      mode="one-time"
+      @saved="onInstanceSaved"
+    />
+
     <!-- Add Members Dialog -->
     <q-dialog v-model="showAddMembers">
       <q-card style="min-width: 400px">
@@ -153,6 +187,7 @@ import { useGroupManagement } from '../composables/useGroupManagement';
 import { useGymSettings } from '../composables/useGymSettings';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import ScheduleEditorDialog from '../components/ScheduleEditorDialog.vue';
+import ClassInstanceEditor from '../components/ClassInstanceEditor.vue';
 import { Notify } from 'quasar';
 
 const router = useRouter();
@@ -169,6 +204,9 @@ const loadingGroups = ref(false);
 
 const showScheduleEditor = ref(false);
 const editingScheduleId = ref<string | null>(null);
+const showCreateMenu = ref(false);
+const showInstanceEditor = ref(false);
+const scheduleKey = ref(0);
 
 const showAddMembers = ref(false);
 const selectedGroup = ref<any>(null);
@@ -212,6 +250,12 @@ function editSchedule(scheduleId: string) {
 function onScheduleSaved() {
   showScheduleEditor.value = false;
   editingScheduleId.value = null;
+  scheduleKey.value++; // Force ScheduleCalendar to refresh
+}
+
+function onInstanceSaved() {
+  showInstanceEditor.value = false;
+  scheduleKey.value++; // Force ScheduleCalendar to refresh
 }
 
 function openChat(chatId: string) {

@@ -14,37 +14,110 @@ const corsHeaders = {
 
 // Extract suggested actions from AI response
 // Looks for patterns like "I can assign X", "You can click", "Reschedule", "Cancel"
-function extractSuggestedActions(content: string, toolResults: any[]) {
+function extractSuggestedActions(content: string, toolResults: any[], conversationHistory: any[]) {
+  console.log('🎬 extractSuggestedActions called')
+  console.log('  Content preview:', content.substring(0, 100))
+  console.log('  Tool results count:', toolResults?.length || 0)
+  
   const actions: any[] = []
   
   // Check if this is a response about missing instructor
   const hasNoInstructor = content.toLowerCase().includes('no instructor') || 
                           content.toLowerCase().includes('not available') ||
-                          content.toLowerCase().includes('instructor assigned')
+                          content.toLowerCase().includes('instructor assigned') ||
+                          content.toLowerCase().includes('assign professor') ||
+                          content.toLowerCase().includes('assign coach') ||
+                          content.toLowerCase().includes('regarding instructor')
   
-  if (!hasNoInstructor) return actions
+  console.log('  hasNoInstructor:', hasNoInstructor)
+  
+  if (!hasNoInstructor) {
+    console.log('  ❌ No instructor keywords found, skipping action extraction')
+    return actions
+  }
   
   // Get instructor and schedule info from tool results if available
   let instructors: any[] = []
-  let schedule: any = null
+  let schedules: any[] = []
   
   if (toolResults) {
     for (const tr of toolResults) {
+      // Get instructors from get_instructors tool
       if (tr.tool === 'get_instructors' && tr.result?.instructors) {
         instructors = tr.result.instructors
+        console.log(`📋 Found ${instructors.length} instructors from get_instructors`)
       }
+      
+      // Get schedule from check_schedule_problems tool
       if (tr.tool === 'check_schedule_problems' && tr.result?.problems) {
-        const noInstructorProblem = tr.result.problems.find((p: any) => p.type === 'no_instructor')
-        if (noInstructorProblem) {
-          schedule = noInstructorProblem.schedule
+        console.log(`🔍 check_schedule_problems returned ${tr.result.problems.length} problems`)
+        const noInstructorProblems = tr.result.problems.filter((p: any) => p.type === 'no_instructor')
+        console.log(`📌 Found ${noInstructorProblems.length} no_instructor problems`)
+        
+        schedules = noInstructorProblems.map((p: any) => p.schedule).filter(Boolean)
+        console.log(`📅 Extracted ${schedules.length} schedules from problems`)
+        
+        // Debug: Log first schedule if available
+        if (schedules.length > 0) {
+          console.log('📅 First schedule:', {
+            id: schedules[0].id,
+            class_type: schedules[0].class_type,
+            day: schedules[0].day_of_week,
+            time: schedules[0].start_time
+          })
         }
+      }
+      
+      // FALLBACK: Get schedule from get_schedule tool if we don't have it yet
+      if (schedules.length === 0 && tr.tool === 'get_schedule' && tr.result?.schedules) {
+        console.log('🔄 FALLBACK: Using get_schedule results')
+        // Find schedules without instructor (instructor_id is null or instructor_name is 'TBD')
+        schedules = tr.result.schedules.filter((s: any) => 
+          !s.instructor_id || s.instructor_name === 'TBD' || s.instructor_name === null
+        )
+        console.log(`📅 Found ${schedules.length} schedules without instructor`)
       }
     }
   }
   
-  // Action 1: Assign instructor anyway (if we have instructor info)
-  if (instructors.length > 0 && schedule) {
-    for (const instructor of instructors.slice(0, 3)) { // Max 3 suggestions
+  // FALLBACK 2: Try to parse class info from the AI's response text
+  // Look for patterns like "GI class on Monday at 5:00 PM"
+  if (schedules.length === 0 && content) {
+    const classMatch = content.match(/(\w+)\s+class\s+on\s+(\w+)\s+at\s+([\d:]+\s*[AP]M)/i)
+    if (classMatch) {
+      const [, classType, dayOfWeek, time] = classMatch
+      schedules.push({
+        // Partial schedule info - won't have ID but can still show text-based options
+        class_type: classType,
+        day_of_week: dayOfWeek,
+        start_time: time,
+        id: null // No ID means we can't execute actions, but we tried
+      })
+    }
+  }
+  
+  // Use the first schedule if we found any
+  const schedule = schedules.length > 0 ? schedules[0] : null
+  
+  // Only create action buttons if we have both instructors AND a valid schedule with ID
+  if (instructors.length > 0 && schedule && schedule.id) {
+    // Action 1: Assign instructor buttons - SMART SELECTION
+    // Find instructors that were actually mentioned in the AI response
+    const mentionedInstructors = instructors.filter((instructor: any) => {
+      // Check if instructor's name appears in the content
+      const namePattern = new RegExp(instructor.name.replace(/\s+/g, '\\s+'), 'i')
+      return namePattern.test(content)
+    })
+    
+    console.log('📋 Instructors mentioned in response:', mentionedInstructors.map((i: any) => i.name))
+    
+    // Use mentioned instructors if any, otherwise fall back to all instructors
+    const instructorsToShow = mentionedInstructors.length > 0 
+      ? mentionedInstructors.slice(0, 3) 
+      : instructors.slice(0, 3)
+    
+    // Create buttons for selected instructors
+    for (const instructor of instructorsToShow) {
       actions.push({
         type: 'assign_instructor',
         label: `Assign ${instructor.name}`,
@@ -53,40 +126,44 @@ function extractSuggestedActions(content: string, toolResults: any[]) {
         params: {
           schedule_id: schedule.id,
           instructor_id: instructor.id,
-          instructor_name: instructor.name
+          instructor_name: instructor.name,
+          class_info: `${schedule.class_type} - ${schedule.day_of_week} ${schedule.start_time}`
         }
       })
     }
-  }
-  
-  // Action 2: Direct message instructors - REMOVED
-  // Instructor names are already clickable in the message text, no button needed
-  
-  // Action 3: Reschedule class (if we have schedule info)
-  if (schedule) {
+    
+    // Action 2: Reschedule class
     actions.push({
       type: 'reschedule_class',
       label: 'Reschedule Class',
       icon: 'schedule',
       color: 'warning',
       params: {
-        schedule_id: schedule.id
+        schedule_id: schedule.id,
+        class_info: `${schedule.class_type} - ${schedule.day_of_week} ${schedule.start_time}`
       }
     })
-  }
-  
-  // Action 4: Cancel class
-  if (schedule) {
+    
+    // Action 3: Cancel class
     actions.push({
       type: 'cancel_class',
       label: 'Cancel Class',
       icon: 'cancel',
       color: 'negative',
       params: {
-        schedule_id: schedule.id
+        schedule_id: schedule.id,
+        class_info: `${schedule.class_type} - ${schedule.day_of_week} ${schedule.start_time}`
       }
     })
   }
+  
+  // Log what we found for debugging
+  console.log('🎬 Action extraction:', {
+    hasInstructors: instructors.length > 0,
+    hasSchedule: !!schedule,
+    hasScheduleId: !!(schedule?.id),
+    actionsCreated: actions.length
+  })
   
   return actions
 }
@@ -180,7 +257,13 @@ INSTRUCTOR MANAGEMENT (Owners/Admins only):
 - You can cancel classes with notifications using cancel_class_with_notification
 
 CRITICAL: RESPONDING TO "NO INSTRUCTOR ASSIGNED" PROBLEMS:
-When a class has no instructor assigned, ALWAYS provide these actionable options:
+When a user asks about scheduling issues, instructor assignments, or fixing classes without instructors:
+
+**STEP 1: ALWAYS call BOTH tools in sequence:**
+1. First call check_schedule_problems to identify the problematic class
+2. Then call get_instructors to see available instructors
+
+**STEP 2: Provide these actionable options:**
 
 1. **Assign an instructor anyway** - Instructors can be assigned even if they haven't marked that time as available
    - Suggest specific instructors by name
@@ -196,6 +279,8 @@ When a class has no instructor assigned, ALWAYS provide these actionable options
 
 4. **Cancel the class** - Offer to cancel and notify members
    - Example: "I can also cancel the class and notify anyone who has RSVPed"
+
+**CRITICAL:** If a user asks "can you help me assign an instructor" or similar, you MUST call check_schedule_problems first to identify which class needs help, then call get_instructors.
 
 ALWAYS present ALL FOUR options when discussing unassigned classes. Never just say "no instructors available" without offering solutions.
 
@@ -231,7 +316,20 @@ NATURAL LANGUAGE EXAMPLES:
 - "Are there any classes without instructors?" → check_schedule_problems → filter for no_instructor type
 - "Send alert about class cancellation" → send_alert with message to gym_chat
 - "No instructor for tomorrow's 6pm class, should I cancel?" → check_schedule_problems → check RSVPs → suggest action
-- "GI class Monday 6:30 AM has no instructor" → Present ALL 4 options: (1) I can assign [name], (2) Click [name] to DM them, (3) Reschedule to [time], (4) Cancel the class
+- "GI class Monday 6:30 AM has no instructor" → check_schedule_problems → get_instructors → Present ALL 4 options with action buttons
+- "Can you help me assign an instructor?" → check_schedule_problems → get_instructors → Present options
+- "I need help fixing this scheduling issue: The GI class on Monday at 5:00 PM has no instructor" → check_schedule_problems → get_instructors → Present action buttons
+
+CRITICAL TOOL SEQUENCING FOR INSTRUCTOR ISSUES:
+If the user mentions a specific class having no instructor or needing help with scheduling:
+1. FIRST call check_schedule_problems (to get the schedule ID and full context)
+2. THEN call get_instructors (to get available instructors)
+3. FINALLY respond with ALL FOUR OPTIONS - the system will automatically create clickable action buttons
+
+CRITICAL: DO NOT say "I will go ahead and assign" without actually calling assign_instructor_to_class tool!
+Instead, present the options and let the user click a button:
+- "Here are your options: 1) Assign Professor X (click the button below), 2) Message instructors, 3) Reschedule, 4) Cancel"
+- DO NOT execute assignments unless the user explicitly confirms via the action buttons
 
 CRITICAL: INSTRUCTOR NAMES ARE CLICKABLE LINKS:
 - ALL instructor names in your responses are automatically converted to clickable links
@@ -335,7 +433,7 @@ Be friendly, concise, and helpful. When making RSVPs, checking schedules, or man
       
       messages.push({
         role: 'user',
-        content: `Here are the results from the tools you requested:\n\n${toolSummary}\n\nPlease provide a natural, helpful response based on these results.`
+        content: `Here are the results from the tools you requested:\n\n${toolSummary}\n\nCRITICAL: You now have all the information you need. Provide a complete, natural response to the user based on these results. DO NOT request more tools unless absolutely necessary for a multi-step action (like RSVP after getting schedule, or assign instructor after getting instructor list). If you're just providing information, answer directly now.`
       })
     } else if (message) {
       // Add current message if provided and no tool results
@@ -357,9 +455,21 @@ Be friendly, concise, and helpful. When making RSVPs, checking schedules, or man
     })) || []
 
     // Call OpenAI API
-    // IMPORTANT: Always include tools so AI can make follow-up tool calls after getting results
-    // This allows for multi-step operations like: 1) get_schedule, 2) rsvp_to_class
-    const shouldIncludeTools = openaiTools.length > 0
+    // IMPORTANT: Only include tools if we don't have tool results OR if we have results that require follow-up actions
+    // This prevents infinite loops while allowing multi-step operations like: 1) get_schedule, 2) rsvp_to_class
+    
+    // Check if any tool results indicate we need follow-up actions
+    const needsFollowUpTools = toolResults && toolResults.length > 0 && toolResults.some((tr: any) => {
+      // Allow follow-up tools only for specific action sequences:
+      // 1. After get_schedule -> allow rsvp_to_class or find_next_class
+      // 2. After get_instructors -> allow assign_instructor_to_class (only if user requested assignment)
+      // 3. After check_schedule_problems -> allow various remediation tools
+      const actionTools = ['get_schedule', 'find_next_class', 'check_schedule_problems']
+      return actionTools.includes(tr.tool)
+    })
+    
+    // Include tools if: no tool results yet OR tool results need follow-up
+    const shouldIncludeTools = openaiTools.length > 0 && (!toolResults || needsFollowUpTools)
     
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -372,7 +482,7 @@ Be friendly, concise, and helpful. When making RSVPs, checking schedules, or man
         messages,
         tools: shouldIncludeTools ? openaiTools : undefined,
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 1000
       })
     })
 
@@ -404,7 +514,9 @@ Be friendly, concise, and helpful. When making RSVPs, checking schedules, or man
     }
 
     // Extract suggested actions from the response
-    const suggestedActions = extractSuggestedActions(assistantMessage.content, toolResults)
+    const suggestedActions = extractSuggestedActions(assistantMessage.content, toolResults, conversationHistory)
+    
+    console.log('✅ Final response - suggested_actions count:', suggestedActions.length)
 
     // Return assistant message
     return new Response(
@@ -412,7 +524,13 @@ Be friendly, concise, and helpful. When making RSVPs, checking schedules, or man
         message: assistantMessage.content,
         tool_calls: [],
         requiresToolExecution: false,
-        suggested_actions: suggestedActions
+        suggested_actions: suggestedActions,
+        // DEBUG INFO (temporary) - remove after debugging
+        _debug: {
+          action_count: suggestedActions.length,
+          tool_results_count: toolResults?.length || 0,
+          has_tool_results: !!toolResults && toolResults.length > 0
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

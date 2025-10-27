@@ -477,6 +477,21 @@ watch(() => preferences.value.checkIntervalMinutes, () => {
   setupCheckInterval()
 })
 
+// Listen for external refresh requests (e.g., after instructor assignment)
+onMounted(() => {
+  const handleRefresh = () => {
+    console.log('🔄 AI Widget: External refresh requested')
+    void checkForIssues()
+  }
+  
+  window.addEventListener('refresh-ai-insights', handleRefresh)
+  
+  // Cleanup on unmount
+  onBeforeUnmount(() => {
+    window.removeEventListener('refresh-ai-insights', handleRefresh)
+  })
+})
+
 // Watch for preference changes and re-filter alerts
 watch(() => preferences.value.severityFilter, () => {
   console.log('🔄 Severity filter changed, re-filtering alerts')

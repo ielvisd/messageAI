@@ -520,7 +520,7 @@ export function useGymAI() {
       p_instructor_id: params.instructor_id,
       p_assignment_type: params.assignment_type || 'recurring_weekly',
       p_assigned_by: user.value.id,
-      p_assignment_method: 'ai',
+      p_assignment_method: 'ai_suggested',
       p_ai_confidence: null
     });
 
@@ -926,6 +926,8 @@ export function useGymAI() {
         }
 
         console.log('🔄 Calling AI again with tool results...');
+        console.log('🔍 DEBUG: Tool results being sent:', JSON.stringify(toolResultsArray, null, 2));
+        
         // Call AI again with tool results (don't send full conversationState to reduce payload size)
         const { data: followupData, error: followupError } = await supabase.functions.invoke('gym-ai-assistant', {
           body: {
@@ -952,6 +954,7 @@ export function useGymAI() {
         console.log('🔍 Does AI want more tools?', followupData.tool_calls?.length > 0 ? 'YES' : 'NO');
         
         // Check if AI wants to make MORE tool calls (multi-step workflow)
+        // SAFETY: Only allow ONE additional round of tool calls to prevent infinite loops
         if (followupData.tool_calls && followupData.tool_calls.length > 0) {
           console.log('🔁 AI requested more tools after first round:', followupData.tool_calls);
           
@@ -968,8 +971,13 @@ export function useGymAI() {
             });
           }
           
-          // Call AI one more time with these results
-          console.log('🔄 Final AI call with additional tool results...');
+          // CRITICAL: Combine ALL tool results (original + additional) for the final call
+          // The action extraction needs BOTH check_schedule_problems AND get_instructors results
+          const allToolResults = [...toolResultsArray, ...additionalToolResults];
+          console.log('🔗 Combining tool results for final call:', allToolResults.map(tr => tr.tool));
+          
+          // Call AI one more time with these results (FINAL CALL - no more tools allowed)
+          console.log('🔄 Final AI call with ALL tool results...');
           const { data: finalData, error: finalError } = await supabase.functions.invoke('gym-ai-assistant', {
             body: {
               message: userMessage,
@@ -980,9 +988,9 @@ export function useGymAI() {
               },
               gymId,
               userId: user.value?.id,
-              tools,
+              tools: [], // IMPORTANT: No tools on final call to force a response
               userTimezone: timezone,
-              toolResults: additionalToolResults
+              toolResults: allToolResults // Pass ALL tool results, not just additional ones
             }
           });
           
@@ -993,15 +1001,35 @@ export function useGymAI() {
           
           console.log('✅ Got final AI response:', finalData.message);
           
-          // Add the final response
-          messages.value.push({
-            role: 'assistant',
-            content: finalData.message,
-            timestamp: new Date().toISOString(),
-            suggested_actions: finalData.suggested_actions || []
-          });
+          // Safeguard: If AI still didn't provide a proper response, use a fallback
+          const hasValidResponse = finalData.message && 
+                                    finalData.message.length > 30 && 
+                                    !finalData.message.includes('Let me check that for you');
+          
+          if (!hasValidResponse) {
+            console.warn('⚠️ AI failed to provide proper response after tool execution');
+            console.log('📋 Suggested actions (fallback):', followupData.suggested_actions);
+            // Use the follow-up response instead
+            messages.value.push({
+              role: 'assistant',
+              content: followupData.message || 'I found the information you requested. Please let me know if you need anything else!',
+              timestamp: new Date().toISOString(),
+              suggested_actions: followupData.suggested_actions || []
+            });
+          } else {
+            // Add the final response
+            console.log('📋 Suggested actions (final):', finalData.suggested_actions);
+            messages.value.push({
+              role: 'assistant',
+              content: finalData.message,
+              timestamp: new Date().toISOString(),
+              suggested_actions: finalData.suggested_actions || []
+            });
+          }
         } else {
           // No more tools needed, just add the response
+          console.log('📋 Suggested actions received:', followupData.suggested_actions);
+          console.log('🐛 DEBUG INFO from Edge Function:', followupData._debug);
           messages.value.push({
             role: 'assistant',
             content: followupData.message,

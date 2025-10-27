@@ -6,36 +6,11 @@
       <q-space />
       
       <!-- View Selector -->
-      <q-tabs v-model="currentView" dense class="q-mr-md">
+      <q-tabs v-model="currentView" dense>
         <q-tab name="template" label="Template" icon="event_repeat" />
         <q-tab name="month" label="Month" icon="calendar_month" />
         <q-tab name="week" label="Week" icon="view_week" />
       </q-tabs>
-      
-      <q-btn
-        v-if="editable"
-        icon="add"
-        label="Create"
-        color="primary"
-        @click="showCreateMenu = true"
-      >
-        <q-menu v-model="showCreateMenu">
-          <q-list style="min-width: 200px">
-            <q-item clickable v-close-popup @click="$emit('create-schedule')">
-              <q-item-section avatar>
-                <q-icon name="event_repeat" />
-              </q-item-section>
-              <q-item-section>Recurring Class</q-item-section>
-            </q-item>
-            <q-item clickable v-close-popup @click="showInstanceEditor = true">
-              <q-item-section avatar>
-                <q-icon name="event" />
-              </q-item-section>
-              <q-item-section>One-Time Event</q-item-section>
-            </q-item>
-          </q-list>
-        </q-menu>
-      </q-btn>
     </div>
 
     <!-- View Panels -->
@@ -341,14 +316,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Class Instance Editor -->
-    <ClassInstanceEditor
-      v-model="showInstanceEditor"
-      :gym-id="gymId"
-      :date="newInstanceDate"
-      mode="one-time"
-      @saved="onInstanceSaved"
-    />
   </div>
 </template>
 
@@ -362,7 +329,6 @@ import type { ClassInstance } from '../composables/useClassInstances';
 import RsvpButton from './RsvpButton.vue';
 import ScheduleMonthView from './ScheduleMonthView.vue';
 import ScheduleWeekView from './ScheduleWeekView.vue';
-import ClassInstanceEditor from './ClassInstanceEditor.vue';
 
 const props = defineProps<{
   gymId: string;
@@ -385,9 +351,6 @@ const showDetails = ref(false);
 const selectedSchedule = ref<any>(null);
 const showInstanceDetails = ref(false);
 const selectedInstance = ref<ClassInstance | null>(null);
-const showCreateMenu = ref(false);
-const showInstanceEditor = ref(false);
-const newInstanceDate = ref('');
 
 const canRsvp = computed(() => canRSVPToClasses.value);
 const canDelete = computed(() => isOwner.value);
@@ -641,18 +604,6 @@ async function deleteClass() {
 function viewInstance(instance: ClassInstance) {
   selectedInstance.value = instance;
   showInstanceDetails.value = true;
-}
-
-function onInstanceSaved() {
-  // Refresh the current view
-  if (currentView.value === 'template') {
-    const filters: any = { gym_id: props.gymId };
-    if (props.filteredInstructorId) {
-      filters.instructor_id = props.filteredInstructorId;
-    }
-    void fetchSchedules(filters);
-  }
-  // Month and Week views handle their own refreshing
 }
 
 onMounted(() => {
