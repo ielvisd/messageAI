@@ -816,21 +816,36 @@ const isChatSelected = (chatId: string) => {
 
 // Delete individual chat
 const handleDeleteChat = async (chatId: string) => {
-  const confirmed = confirm('Are you sure you want to delete this chat? This cannot be undone.')
+  // Find the chat to determine the message
+  const chat = chats.value.find(c => c.id === chatId)
+  const chatType = chat?.type || 'group'
+  
+  // Customize confirmation message based on chat type
+  let confirmMessage = 'Are you sure you want to delete this chat?'
+  if (chatType === 'direct') {
+    confirmMessage = 'Hide this conversation? You can resume it by messaging this person again.'
+  } else {
+    confirmMessage = 'Leave this group chat?'
+  }
+  
+  const confirmed = confirm(confirmMessage)
   if (!confirmed) return
 
   deletingChat.value = true
   try {
-    const success = await deleteChat(chatId)
-    if (success) {
+    const result = await deleteChat(chatId)
+    if (result.success) {
       Notify.create({
         type: 'positive',
-        message: 'Chat deleted successfully'
+        message: result.message || 'Chat deleted successfully'
       })
     } else {
       Notify.create({
-        type: 'negative',
-        message: 'Failed to delete chat'
+        type: result.result === 'cannot_leave_gym_chat' ? 'warning' : 'negative',
+        message: result.message || 'Failed to delete chat',
+        caption: result.result === 'cannot_leave_gym_chat' 
+          ? 'This is your gym\'s main group chat' 
+          : undefined
       })
     }
   } catch (err) {
@@ -847,23 +862,36 @@ const handleDeleteChat = async (chatId: string) => {
 const handleDeleteSelected = async () => {
   if (selectedChats.value.length === 0) return
 
-  const confirmed = confirm(`Are you sure you want to delete ${selectedChats.value.length} chat(s)? This cannot be undone.`)
+  const confirmed = confirm(`Delete/leave ${selectedChats.value.length} chat(s)? (Gym chats will be skipped)`)
   if (!confirmed) return
 
   deletingChat.value = true
   try {
-    const success = await deleteMultipleChats(selectedChats.value)
-    if (success) {
+    const result = await deleteMultipleChats(selectedChats.value)
+    
+    // Build notification message
+    let message = ''
+    if (result.success) {
+      const processed = selectedChats.value.length - result.skipped.length - result.errors.length
+      message = `${processed} chat(s) deleted/hidden`
+      
+      if (result.skipped.length > 0) {
+        message += `. Skipped ${result.skipped.length} gym chat(s)`
+      }
+      
       Notify.create({
         type: 'positive',
-        message: `${selectedChats.value.length} chat(s) deleted successfully`
+        message,
+        caption: result.skipped.length > 0 ? 'Cannot leave gym chats' : undefined
       })
+      
       selectedChats.value = []
       selectionMode.value = false
     } else {
       Notify.create({
         type: 'negative',
-        message: 'Failed to delete chats'
+        message: result.errors[0] || 'Failed to delete chats',
+        caption: result.skipped.length > 0 ? `Skipped ${result.skipped.length} gym chat(s)` : undefined
       })
     }
   } catch (err) {
@@ -880,23 +908,34 @@ const handleDeleteSelected = async () => {
 const handleDeleteAll = async () => {
   if (chats.value.length === 0) return
 
-  const confirmed = confirm(`⚠️ Are you sure you want to delete ALL ${chats.value.length} chat(s)? This cannot be undone!`)
+  const confirmed = confirm(`⚠️ Delete/leave ALL ${chats.value.length} chat(s)? (Gym chats will be skipped)`)
   if (!confirmed) return
 
   deletingChat.value = true
   try {
-    const success = await deleteAllChats()
-    if (success) {
+    const result = await deleteAllChats()
+    
+    if (result.success || result.skipped.length > 0) {
+      const deletedCount = chats.value.length - result.skipped.length
+      let message = deletedCount > 0 
+        ? `${deletedCount} chat(s) deleted/hidden` 
+        : 'No chats were deleted'
+      
+      if (result.skipped.length > 0) {
+        message += `. Skipped ${result.skipped.length} gym chat(s)`
+      }
+      
       Notify.create({
-        type: 'positive',
-        message: 'All chats deleted successfully'
+        type: deletedCount > 0 ? 'positive' : 'info',
+        message,
+        caption: result.skipped.length > 0 ? 'Cannot leave gym chats' : undefined
       })
       selectedChats.value = []
       selectionMode.value = false
     } else {
       Notify.create({
         type: 'negative',
-        message: 'Failed to delete all chats'
+        message: result.errors[0] || 'Failed to delete all chats'
       })
     }
   } catch (err) {

@@ -12,6 +12,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'x-client-info': 'supabase-js-web'
+    },
+    fetch: (url, options) => {
+      console.log('📡 Supabase request:', url)
+      return fetch(url, options).then(response => {
+        console.log('📡 Supabase response:', response.status, url)
+        return response
+      }).catch(err => {
+        console.error('📡 Supabase fetch error:', err, url)
+        throw err
+      })
+    }
   }
 })
 

@@ -67,6 +67,9 @@ import { supabase } from '../boot/supabase'
 import { user } from '../state/auth'
 import { Notify } from 'quasar'
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
 const props = defineProps<{
   modelValue: boolean
   avatarUrl?: string | null
@@ -200,39 +203,118 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
     console.log('User ID:', user.value.id)
     console.log('Blob size:', imageBlob.size, 'bytes')
 
-    // Delete old avatar if exists
+    // Get auth token - WORKAROUND: getSession() hangs on iOS, read from localStorage
+    console.log('Getting auth token...')
+    let accessToken: string | null = null
+    
+    try {
+      // Try to read directly from localStorage where Supabase stores it
+      const supabaseAuthKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`
+      const authData = localStorage.getItem(supabaseAuthKey)
+      console.log('Auth key:', supabaseAuthKey)
+      console.log('Auth data exists:', !!authData)
+      
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        accessToken = parsed?.access_token || parsed?.currentSession?.access_token
+        console.log('✅ Got token from localStorage')
+      }
+    } catch (err) {
+      console.warn('Could not read token from localStorage:', err)
+    }
+    
+    // Fallback: try getSession() with short timeout
+    if (!accessToken) {
+      console.log('Trying getSession() as fallback...')
+      try {
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 2000)
+        )
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any
+        accessToken = session?.access_token
+        console.log('✅ Got token from getSession()')
+      } catch (err) {
+        console.error('getSession() failed:', err)
+      }
+    }
+    
+    if (!accessToken) {
+      throw new Error('Could not get access token')
+    }
+    console.log('✅ Ready to upload with token')
+
+    // Delete old avatar if exists (don't block upload on this)
     if (currentAvatarUrl.value) {
-      console.log('Deleting old avatar...')
       const oldPath = currentAvatarUrl.value.split('/').pop()
       if (oldPath) {
-        await uploadWithTimeout(
-          supabase.storage
-            .from('profile-avatars')
-            .remove([`${user.value.id}/${oldPath}`]),
-          10000
-        )
+        console.log('Deleting old avatar (non-blocking):', oldPath)
+        const deleteUrl = `${supabaseUrl}/storage/v1/object/profile-avatars/${user.value.id}/${oldPath}`
+        
+        // Fire and forget - don't await this
+        fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }).then(response => {
+          if (response.ok) {
+            console.log('✅ Old avatar deleted')
+          } else {
+            console.warn('⚠️  Could not delete old avatar:', response.status)
+          }
+        }).catch(err => {
+          console.warn('⚠️  Delete failed:', err)
+        })
+        console.log('Delete request sent (continuing with upload)')
       }
     }
 
     // Upload new avatar with timeout
     const fileName = `${user.value.id}/${Date.now()}.jpg`
     console.log('Uploading to:', fileName)
+    console.log('Bucket: profile-avatars')
+    console.log('File size:', imageBlob.size, 'bytes')
     
-    const uploadResult = await uploadWithTimeout(
-      supabase.storage
-        .from('profile-avatars')
-        .upload(fileName, imageBlob, {
-          cacheControl: '3600',
-          upsert: false
-        }),
-      30000 // 30 second timeout
+    // WORKAROUND: Bypass Supabase Storage SDK on iOS - use direct fetch
+    console.log('Converting Blob to ArrayBuffer...')
+    const arrayBuffer = await imageBlob.arrayBuffer()
+    console.log('✅ Converted to ArrayBuffer:', arrayBuffer.byteLength, 'bytes')
+    
+    console.log('Attempting direct upload to Storage API...')
+    const storageUrl = `${supabaseUrl}/storage/v1/object/profile-avatars/${fileName}`
+    console.log('Upload URL:', storageUrl)
+    
+    const uploadResponse = await uploadWithTimeout(
+      fetch(storageUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'image/jpeg',
+          'x-upsert': 'false'
+        },
+        body: arrayBuffer
+      }),
+      15000 // 15 second timeout for testing
     )
+    
+    console.log('Upload response status:', uploadResponse.status)
+    
+    const uploadResult = {
+      data: uploadResponse.ok ? { path: fileName } : null,
+      error: uploadResponse.ok ? null : { message: await uploadResponse.text() }
+    }
 
     console.log('Upload result:', uploadResult)
 
     if (uploadResult.error) {
-      console.error('Upload error:', uploadResult.error)
-      throw uploadResult.error
+      console.error('❌ Upload error details:', {
+        message: uploadResult.error.message,
+        status: uploadResult.error.status,
+        statusCode: uploadResult.error.statusCode,
+        error: uploadResult.error
+      })
+      throw new Error(`Upload failed: ${uploadResult.error.message || JSON.stringify(uploadResult.error)}`)
     }
 
     // Get public URL
@@ -243,21 +325,31 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
 
     console.log('Public URL:', urlData.publicUrl)
 
-    // Update profile with timeout
+    // Update profile with timeout - WORKAROUND: Use direct PostgREST API
     console.log('Updating profile...')
-    const updateResult = await uploadWithTimeout(
-      supabase
-        .from('profiles')
-        .update({ avatar_url: urlData.publicUrl })
-        .eq('id', user.value.id),
+    const postgrestUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${user.value.id}`
+    console.log('PostgREST URL:', postgrestUrl)
+    
+    const updateResponse = await uploadWithTimeout(
+      fetch(postgrestUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ avatar_url: urlData.publicUrl })
+      }),
       10000
     )
 
-    console.log('Update result:', updateResult)
+    console.log('Update response status:', updateResponse.status)
 
-    if (updateResult.error) {
-      console.error('Update error:', updateResult.error)
-      throw updateResult.error
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text()
+      console.error('Update error:', errorText)
+      throw new Error(`Profile update failed: ${errorText}`)
     }
 
     currentAvatarUrl.value = urlData.publicUrl
@@ -274,7 +366,13 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
 
     return urlData.publicUrl
   } catch (err) {
-    console.error('Error uploading avatar:', err)
+    console.error('❌ Error uploading avatar:', err)
+    console.error('Error type:', typeof err)
+    console.error('Error stringified:', JSON.stringify(err))
+    if (err instanceof Error) {
+      console.error('Error message:', err.message)
+      console.error('Error stack:', err.stack)
+    }
     
     let errorMessage = 'Failed to upload profile picture'
     if (err instanceof Error) {
@@ -282,6 +380,8 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
         errorMessage = 'Upload timed out. Please check your connection and try again.'
       } else if (err.message.includes('bucket')) {
         errorMessage = 'Storage configuration error. Please contact support.'
+      } else if (err.message.includes('policy')) {
+        errorMessage = 'Permission denied. Storage policies may not be configured correctly.'
       } else {
         errorMessage = `Upload failed: ${err.message}`
       }
@@ -418,24 +518,103 @@ const handleRemovePhoto = async () => {
   uploading.value = true
 
   try {
-    // Delete from storage
+    console.log('🗑️ Starting avatar removal...')
+    
+    // Get auth token - WORKAROUND: getSession() hangs on iOS, read from localStorage
+    console.log('Getting auth token...')
+    let accessToken: string | null = null
+    
+    try {
+      // Try to read directly from localStorage where Supabase stores it
+      const supabaseAuthKey = `sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`
+      const authData = localStorage.getItem(supabaseAuthKey)
+      
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        accessToken = parsed?.access_token || parsed?.currentSession?.access_token
+        console.log('✅ Got token from localStorage')
+      }
+    } catch (err) {
+      console.warn('Could not read token from localStorage:', err)
+    }
+    
+    // Fallback: try getSession() with short timeout
+    if (!accessToken) {
+      console.log('Trying getSession() as fallback...')
+      try {
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 2000)
+        )
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any
+        accessToken = session?.access_token
+        console.log('✅ Got token from getSession()')
+      } catch (err) {
+        console.error('getSession() failed:', err)
+      }
+    }
+    
+    if (!accessToken) {
+      throw new Error('Could not get access token')
+    }
+    console.log('✅ Ready to delete with token')
+    
+    // Delete from storage with timeout using direct fetch
     if (currentAvatarUrl.value) {
       const oldPath = currentAvatarUrl.value.split('/').pop()
       if (oldPath) {
-        await supabase.storage
-          .from('profile-avatars')
-          .remove([`${user.value.id}/${oldPath}`])
+        console.log('Deleting file from storage:', `${user.value.id}/${oldPath}`)
+        
+        const deleteUrl = `${supabaseUrl}/storage/v1/object/profile-avatars/${user.value.id}/${oldPath}`
+        console.log('Delete URL:', deleteUrl)
+        
+        const deleteResponse = await uploadWithTimeout(
+          fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          }),
+          10000 // 10 second timeout
+        )
+        
+        if (!deleteResponse.ok) {
+          const errorText = await deleteResponse.text()
+          console.error('Delete error:', errorText)
+          throw new Error(`Delete failed: ${errorText}`)
+        }
+        console.log('✅ File deleted from storage')
       }
     }
 
-    // Update profile
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: null })
-      .eq('id', user.value.id)
+    // Update profile with timeout - WORKAROUND: Use direct PostgREST API
+    console.log('Updating profile to remove avatar_url...')
+    const postgrestUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${user.value.id}`
+    console.log('PostgREST URL:', postgrestUrl)
+    
+    const updateResponse = await uploadWithTimeout(
+      fetch(postgrestUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ avatar_url: null })
+      }),
+      10000 // 10 second timeout
+    )
 
-    if (updateError) throw updateError
+    console.log('Update response status:', updateResponse.status)
 
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text()
+      console.error('Update error:', errorText)
+      throw new Error(`Profile update failed: ${errorText}`)
+    }
+
+    console.log('✅ Profile updated')
     currentAvatarUrl.value = null
     emit('avatar-updated', null)
 
@@ -446,14 +625,26 @@ const handleRemovePhoto = async () => {
       timeout: 2000
     })
   } catch (err) {
-    console.error('Error removing avatar:', err)
+    console.error('❌ Error removing avatar:', err)
+    
+    let errorMessage = 'Failed to remove profile picture'
+    if (err instanceof Error) {
+      if (err.message === 'Upload timeout') {
+        errorMessage = 'Operation timed out. Please check your connection and try again.'
+      } else {
+        errorMessage = `Failed to remove: ${err.message}`
+      }
+    }
+    
     Notify.create({
       type: 'negative',
-      message: 'Failed to remove profile picture',
-      position: 'top'
+      message: errorMessage,
+      position: 'top',
+      timeout: 5000
     })
   } finally {
     uploading.value = false
+    console.log('Avatar removal process finished')
   }
 }
 

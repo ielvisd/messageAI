@@ -328,102 +328,165 @@ export function useChatList() {
     }
   })
 
-  const deleteChat = async (chatId: string): Promise<boolean> => {
-    if (!user.value) return false
+  const deleteChat = async (chatId: string): Promise<{ success: boolean; result?: string; message?: string }> => {
+    if (!user.value) return { success: false, message: 'Not authenticated' }
 
     try {
-      console.log('🗑️ Deleting chat:', chatId)
+      console.log('🗑️ Attempting to delete/leave chat:', chatId)
 
-      // Delete the chat - this will cascade delete messages and members due to FK constraints
-      const { error: deleteError } = await supabase
-        .from('chats')
-        .delete()
-        .eq('id', chatId)
+      // Use the leave_or_delete_chat function which handles all the logic
+      const { data: result, error: rpcError } = await supabase
+        .rpc('leave_or_delete_chat', { chat_id_param: chatId })
 
-      if (deleteError) {
-        console.error('❌ Failed to delete chat:', deleteError)
-        throw deleteError
+      if (rpcError) {
+        console.error('❌ Failed to delete/leave chat:', rpcError)
+        throw rpcError
       }
 
-      // Remove from local state
-      chats.value = chats.value.filter(c => c.id !== chatId)
-      console.log('✅ Chat deleted successfully')
+      console.log('📝 Chat action result:', result)
 
-      return true
+      // Handle different results
+      switch (result) {
+        case 'cannot_leave_gym_chat':
+          error.value = 'Cannot leave your gym\'s main chat'
+          return { 
+            success: false, 
+            result, 
+            message: 'Cannot leave your gym\'s main chat' 
+          }
+        
+        case 'not_a_member':
+          error.value = 'You are not a member of this chat'
+          return { 
+            success: false, 
+            result, 
+            message: 'You are not a member of this chat' 
+          }
+        
+        case 'chat_hidden':
+          // Remove from local state
+          chats.value = chats.value.filter(c => c.id !== chatId)
+          console.log('✅ Chat hidden from your view')
+          return { 
+            success: true, 
+            result, 
+            message: 'Conversation hidden' 
+          }
+        
+        case 'left_chat':
+          // Remove from local state
+          chats.value = chats.value.filter(c => c.id !== chatId)
+          console.log('✅ Left chat successfully')
+          return { 
+            success: true, 
+            result, 
+            message: 'Left group chat' 
+          }
+        
+        case 'chat_deleted':
+          // Remove from local state
+          chats.value = chats.value.filter(c => c.id !== chatId)
+          console.log('✅ Chat deleted successfully')
+          return { 
+            success: true, 
+            result, 
+            message: 'Chat deleted successfully' 
+          }
+        
+        default:
+          console.warn('⚠️ Unknown result:', result)
+          return { 
+            success: false, 
+            result, 
+            message: 'Unknown result' 
+          }
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete chat'
       console.error('Error deleting chat:', err)
-      return false
+      return { 
+        success: false, 
+        message: err instanceof Error ? err.message : 'Failed to delete chat' 
+      }
     }
   }
 
-  const deleteMultipleChats = async (chatIds: string[]): Promise<boolean> => {
-    if (!user.value) return false
+  const deleteMultipleChats = async (chatIds: string[]): Promise<{ success: boolean; skipped: string[]; errors: string[] }> => {
+    if (!user.value) return { success: false, skipped: [], errors: ['Not authenticated'] }
 
     try {
       console.log('🗑️ Deleting multiple chats:', chatIds.length)
 
-      const { error: deleteError } = await supabase
-        .from('chats')
-        .delete()
-        .in('id', chatIds)
+      const skippedChats: string[] = []
+      const errorMessages: string[] = []
+      let successCount = 0
 
-      if (deleteError) {
-        console.error('❌ Failed to delete chats:', deleteError)
-        throw deleteError
+      // Process each chat individually to handle gym chats properly
+      for (const chatId of chatIds) {
+        const result = await deleteChat(chatId)
+        
+        if (result.success) {
+          successCount++
+        } else if (result.result === 'cannot_leave_gym_chat') {
+          // Find chat name for better error message
+          const chat = chats.value.find(c => c.id === chatId)
+          skippedChats.push(chat?.name || chatId)
+        } else if (result.message) {
+          errorMessages.push(result.message)
+        }
       }
 
-      // Remove from local state
-      chats.value = chats.value.filter(c => !chatIds.includes(c.id))
-      console.log('✅ Chats deleted successfully')
+      console.log(`✅ Deleted ${successCount}/${chatIds.length} chats. Skipped ${skippedChats.length} gym chats.`)
 
-      return true
+      return {
+        success: successCount > 0,
+        skipped: skippedChats,
+        errors: errorMessages
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete chats'
       console.error('Error deleting chats:', err)
-      return false
+      return {
+        success: false,
+        skipped: [],
+        errors: [err instanceof Error ? err.message : 'Failed to delete chats']
+      }
     }
   }
 
-  const deleteAllChats = async (): Promise<boolean> => {
-    if (!user.value) return false
+  const deleteAllChats = async (): Promise<{ success: boolean; skipped: string[]; errors: string[] }> => {
+    if (!user.value) return { success: false, skipped: [], errors: ['Not authenticated'] }
 
     try {
       console.log('🗑️ Deleting all chats for user:', user.value.id)
 
-      // Get all chat IDs for the user
-      const { data: memberData } = await supabase
-        .from('chat_members')
-        .select('chat_id')
-        .eq('user_id', user.value.id)
+      // Get all chat IDs from current loaded chats
+      const chatIds = chats.value.map(c => c.id)
 
-      if (!memberData || memberData.length === 0) {
+      if (chatIds.length === 0) {
         console.log('No chats to delete')
-        return true
+        return { success: true, skipped: [], errors: [] }
       }
 
-      const chatIds = memberData.map(m => m.chat_id)
       console.log(`Found ${chatIds.length} chats to delete`)
 
-      const { error: deleteError } = await supabase
-        .from('chats')
-        .delete()
-        .in('id', chatIds)
+      // Use deleteMultipleChats which handles gym chats properly
+      const result = await deleteMultipleChats(chatIds)
 
-      if (deleteError) {
-        console.error('❌ Failed to delete all chats:', deleteError)
-        throw deleteError
+      if (result.skipped.length > 0) {
+        console.log(`⚠️ Skipped ${result.skipped.length} gym chats`)
       }
 
-      // Clear local state
-      chats.value = []
-      console.log('✅ All chats deleted successfully')
-
-      return true
+      console.log('✅ Delete all operation completed')
+      return result
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete all chats'
       console.error('Error deleting all chats:', err)
-      return false
+      return {
+        success: false,
+        skipped: [],
+        errors: [err instanceof Error ? err.message : 'Failed to delete all chats']
+      }
     }
   }
 
