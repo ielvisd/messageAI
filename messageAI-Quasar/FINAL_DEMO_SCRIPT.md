@@ -1,357 +1,340 @@
-# FINAL DEMO SCRIPT - Ossome AI Gym Assistant
-## 5-7 Minute Recording Script (Scenario-Based)
+# FINAL DEMO SCRIPT - Ossome: Proactive AI Gym Assistant
+## 5-7 Minute One-Shot Screen Recording
+
+**The Hook:** Most AI assistants are REACTIVE - you ask, they answer. Ossome is PROACTIVE - it finds problems before you even know they exist.
 
 **Recording Setup:**
-- **iPad Simulator** (left): Owner view - owner@jiujitsio.com
-- **iPhone Simulator 1** (center): Instructor view - carlos.martinez@jiujitsio.com  
-- **iPhone Simulator 2** (right): Student view - ana.rodriguez@jiujitsio.com
-- Password for all: `demo123456`
-- All logged in and ready before recording starts
+- **iPad Simulator** (left): Owner - owner@jiujitsio.com
+- **iPhone Simulator 1** (center): Instructor - carlos.martinez@jiujitsio.com  
+- **iPhone Simulator 2** (right): Student - ana.rodriguez@jiujitsio.com
+- Password: `demo123456`
+- All logged in, one continuous recording, NO EDITS
 
 ---
 
-## 🎬 RECORDING SCRIPT
+## 🎬 ONE-SHOT RECORDING SCRIPT
 
-### 0:00-0:30 | COLD OPEN - THE PROBLEM
+### 0:00-0:45 | OPENING: THE PROACTIVE DIFFERENCE
 
-**[Screen: Show all 3 simulators with chaotic message threads]**
+**[Screen: All 3 simulators visible, start on iPad]**
 
 **NARRATION:**
-> "Meet Alex - owner of Jiujitsio Gym. Two locations, five instructors, over 100 students. Every day: missed RSVPs, scheduling conflicts, urgent instructor changes. Messages flying everywhere."
+> "Every AI gym assistant you'll see today works the same way: You ask a question, it answers. Reactive. But what if your AI didn't wait to be asked? What if it found problems before they became disasters? Watch this."
 
 **ACTION:**
-- Show rapid scrolling through messages on iPad
-- Quick cuts between iPhone notifications
-
-**NARRATION:**
-> "What if AI could solve this? Watch."
-
-**[Fade to clean screens]**
-
----
-
-### 0:30-1:30 | SCENARIO 1: STUDENT EMERGENCY
-
-**[Focus: iPhone 2 (Student)]**
-
-**NARRATION:**
-> "Ana missed Monday's GI class. She needs to find the next one - fast."
-
-**ACTION:**
-1. On iPhone 2, tap AI Assistant icon (robot head in header)
-2. Type: "I missed Monday GI, when's the next one?"
-3. **Show AI thinking** (loading animation)
-4. AI responds with schedule options including times, instructors, locations
-5. Student types: "Sign me up for Wednesday 7pm"
-6. AI confirms RSVP, shows capacity (12/20)
-
-**NARRATION:**
-> "No scrolling through schedules. No phone calls. Natural language. Instant answers. AI function calling with 12 different tools - schedule lookup, RSVP management, all in one conversation."
-
-**FEATURES HIGHLIGHTED:**
-- ✅ Natural language processing
-- ✅ Function calling (get_schedule, rsvp_to_class)
-- ✅ AI Capability: Function calling
-
----
-
-### 1:30-2:30 | SCENARIO 2: OFFLINE RELIABILITY
-
-**[Focus: iPhone 1 (Instructor)]**
-
-**NARRATION:**
-> "Carlos is in the locker room, WiFi drops. But he needs to message students urgently."
-
-**ACTION:**
-1. On iPhone 1, open group chat "Wednesday GI Class"
-2. **Toggle WiFi OFF** (Settings → WiFi → Off or use simulator menu)
-3. Type message: "Running 10 min late - warmup without me"
-4. Send - message shows "sending..." with clock icon (optimistic UI)
-5. Type another message: "Start with drills we covered last week"
-6. **Switch to iPad and iPhone 2** - they don't see messages yet
-7. **Switch back to iPhone 1**
-8. **Toggle WiFi back ON**
-9. **Watch messages sync instantly**
-10. **Switch to iPad and iPhone 2** - messages appear in real-time
-
-**NARRATION:**
-> "Message queuing. Offline persistence. Automatic sync. When connection returns, everything updates instantly across all devices. This is what real-time means."
-
-**FEATURES HIGHLIGHTED:**
-- ✅ Offline message queuing
-- ✅ Optimistic UI
-- ✅ Real-time sync via Supabase Realtime
-- ✅ AI Capability: Error handling (graceful offline behavior)
-
----
-
-### 2:30-3:30 | SCENARIO 3: INSTRUCTOR CRISIS
-
-**[Focus: iPad (Owner)]**
-
-**NARRATION:**
-> "It's Sunday night. Carlos calls in sick for Monday's 7pm GI class. Twenty students already RSVPd. Alex needs to fix this now."
-
-**ACTION:**
-1. On iPad, tap AI Assistant icon
-2. Type: "Any problems with this week's schedule?"
-3. **AI proactively detects and highlights:**
+1. **Focus on iPad (Owner view)**
+2. Show Instructor Dashboard with AI Insights Widget already visible
+3. Widget shows proactive alerts:
    ```
-   🚨 CRITICAL: Monday 7pm GI - No instructor assigned (in 24 hours)
+   🚨 CRITICAL (1): Monday 7pm GI - No instructor assigned (in 24 hours)
+   ⚠️ WARNING (2): Scheduling conflicts detected
+   💡 INSIGHT: NO-GI classes trending 90% capacity - consider expansion
+   ```
+
+**NARRATION:**
+> "Monday morning, Alex opens the app. Before she even asks, the AI has already scanned schedules, detected conflicts, analyzed capacity trends. It's already working. THIS is proactive AI. Now let me show you how it solves real problems."
+
+---
+
+### 0:45-2:00 | SCENARIO 1: STUDENT EMERGENCY + AI ASSISTANT
+
+**[Transition: iPad → iPhone 2 (Student)]**
+
+**NARRATION:**
+> "Ana missed Monday's GI class. She needs the next one - fast."
+
+**ACTION:**
+1. **On iPhone 2**, tap AI Assistant icon (robot head in header)
+2. Type: **"I missed Monday GI, when's the next one?"**
+3. Watch AI respond in real-time with:
+   - Schedule options with times, instructors, locations
+   - Capacity info (e.g., "Wednesday 7pm GI with Carlos - 12/20 spots")
+4. Student types: **"Sign me up for Wednesday 7pm"**
+5. AI confirms RSVP: "✅ You're RSVPd for Wednesday 7pm GI with Carlos (13/20)"
+6. **Immediately ask:** "Who's teaching?"
+7. AI responds with instructor details and their bio
+
+**NARRATION:**
+> "Natural language. No menus. No scrolling through calendars. The AI understands context - it remembers she's looking at Wednesday's class. Function calling in action - 12 different tools, schedule lookup, RSVP management, all conversational. RAG pipeline retrieving relevant schedules. This is capability one and two."
+
+---
+
+### 2:00-3:30 | SCENARIO 2: INSTRUCTOR CRISIS + OFFLINE QUEUING
+
+**[Transition: iPhone 2 → iPad (Owner)]**
+
+**NARRATION:**
+> "Remember that critical alert the AI found? Monday's GI class has no instructor, and 18 students already RSVPd. It's Sunday night. Let's fix this."
+
+**ACTION:**
+1. **On iPad**, tap AI Assistant icon
+2. Type: **"Any problems with this week's schedule?"**
+3. AI responds:
+   ```
+   🚨 CRITICAL: Monday 7pm GI - No instructor assigned
    📊 Current RSVPs: 18/20
+   
+   Available instructors Monday 7-9pm:
+   • Ana Rodriguez (prefers NO-GI, available)
+   • Carlos Martinez (assigned to South location)
    ```
-4. AI suggests: "Ana Rodriguez is available Monday 7-9pm. Should I assign her?"
-5. Owner types: "Yes, assign Ana to Monday 7pm GI"
-6. AI executes assignment
-7. **Switch to iPhone 2 (Ana)** - Push notification appears: "You've been assigned to Monday 7pm GI"
-8. **Show group chat** - AI automatically posts: "Update: Ana Rodriguez will be teaching Monday 7pm GI"
+4. Owner types: **"Assign Ana to Monday 7pm GI"**
+5. AI executes assignment
+
+**[NOW: Show offline queuing integrated]**
+
+6. **Transition to iPhone 1 (Carlos)** - he needs to message the group
+7. Carlos opens group chat "Monday GI Class"
+8. **Toggle WiFi OFF** (Settings or simulator menu)
+9. Type message: **"FYI - Ana is covering Monday class. She's great!"**
+10. Hit send - message shows **"sending..."** with clock icon (optimistic UI)
+11. **Switch to iPad and iPhone 2** - no message yet
+12. **Toggle WiFi back ON on iPhone 1**
+13. **Watch message sync instantly** across all devices
+14. **Switch to iPhone 2** - push notification appears
+15. **iPad also shows message** in real-time
 
 **NARRATION:**
-> "Proactive problem detection. AI scans schedules, finds conflicts before they become disasters. One message, and it's handled - instructor assigned, students notified. Advanced capability: The AI assistant doesn't wait to be asked."
-
-**FEATURES HIGHLIGHTED:**
-- ✅ Proactive problem detection (Advanced AI Capability)
-- ✅ Instructor management (owner-only function)
-- ✅ Push notifications
-- ✅ Automated group messaging
-- ✅ AI Capabilities: RAG (schedule context), Memory/State (conversation flow), Function calling (assign_instructor_to_class)
+> "Problem solved in seconds. The AI didn't wait to be asked - it detected the conflict proactively. Memory and state management - it tracks the conversation flow. Error handling - watch what happens when Carlos loses WiFi. Messages queue offline, sync when connection returns. Graceful degradation. This is what production-ready looks like."
 
 ---
 
-### 3:30-4:30 | SCENARIO 4: PARENT COORDINATION
+### 3:30-5:00 | SCENARIO 3: GYM-WIDE GROUP CHAT COORDINATION
 
-**[Focus: iPhone 2, then show group chat on all devices]**
+**[Focus: Show all 3 devices, emphasize real-time sync]**
 
 **NARRATION:**
-> "Sarah is a parent with two kids training at the gym. She needs to coordinate schedules."
+> "Friday afternoon. Belt promotion ceremony tonight. The gym owner needs to coordinate with everyone - instructors, students, parents."
 
 **ACTION:**
-1. On iPhone 2, open AI Assistant
-2. Type: "When are the kids' classes this week?"
-3. AI retrieves linked student profiles and shows combined schedule
-4. AI proactively suggests: "Tuesday 5pm Kids class is at capacity (20/20). Would you like to add Emma to the waitlist?"
-5. User types: "Yes add to waitlist"
-6. **Show group chat** "Parents - Carpool Group"
-7. Real-time messages between parents coordinating rides
-8. Show read receipts (double blue checkmarks)
-9. Show typing indicators
+1. **On iPad**, open group chat **"Jiujitsio - All Members"** (gym-wide chat)
+2. Owner posts message: **"🥋 Belt promotion ceremony tonight 7pm! Don't forget your gi!"**
+3. **Watch message appear on iPhone 1 and iPhone 2 simultaneously**
+4. **iPhone 2 (Ana)** reacts with 🔥 emoji
+5. **Show emoji reaction appear on all devices**
+6. **iPhone 1 (Carlos)** types reply: **"I'll be there 15 min early to help setup"**
+7. **Show typing indicator** appear on iPad and iPhone 2
+8. **Message sends, read receipts appear** (double blue checkmarks)
+9. **iPad** double-checks read status: hover/tap to see "Read by Ana, Carlos"
+10. **Owner sends photo** from camera roll (technique demo photo)
+11. **Photo appears on all devices** with preview thumbnails
 
 **NARRATION:**
-> "Parent-student linking. Capacity management. Real-time group coordination. The AI remembers family relationships, proactively manages waitlists. Everything parents need in one conversation."
+> "Group chat with unlimited members. Real-time sync via Supabase Realtime subscriptions. Emoji reactions. Read receipts - see exactly who read what. Media sharing. All the MVP features working seamlessly together. But here's where it gets interesting..."
 
-**FEATURES HIGHLIGHTED:**
-- ✅ Parent-student role linking
-- ✅ Capacity management and waitlists
-- ✅ Group chat (3+ members)
-- ✅ Read receipts
-- ✅ Real-time typing indicators
-- ✅ AI Capabilities: User preferences (family links), Memory (multi-turn context)
+**[Continue in same group chat]**
+
+12. **Owner asks AI** (from within group chat or AI Assistant): **"Summarize this week's attendance"**
+13. AI analyzes RSVP data and responds with insights:
+    ```
+    📊 This Week's Attendance:
+    • GI Classes: 78 RSVPs across 6 sessions
+    • NO-GI Classes: 92 RSVPs across 8 sessions
+    • Open Mat: 45 RSVPs
+    
+    💡 Insight: NO-GI classes averaging 92% capacity
+    Suggestion: Consider adding Thursday 8pm NO-GI session
+    ```
+
+**NARRATION:**
+> "The AI isn't just managing schedules - it's analyzing patterns, suggesting growth opportunities. RAG pipeline pulling historical data. Function calling for analytics. User preferences understanding owner role permissions. This is all five AI capabilities working together."
 
 ---
 
-### 4:30-5:30 | SCENARIO 5: OWNER INTELLIGENCE DASHBOARD
+### 5:00-6:00 | SCENARIO 4: INSTRUCTOR MANAGEMENT + VOICE COMMANDS
 
-**[Focus: iPad (Owner)]**
+**[Stay on iPad, show role-based permissions]**
 
 **NARRATION:**
-> "It's Monday morning. Alex opens the app. Before she even asks, the AI has already organized her world."
+> "Role-based access. Watch what owners can do that students can't. And because gym owners are always multitasking..."
 
 **ACTION:**
-1. On iPad, navigate to Instructor Dashboard
-2. Show AI Insights Widget with categorized issues:
-   - 🔴 **URGENT** (2): Billing questions, injury reports
-   - 🟡 **MEDIUM** (5): Class questions, schedule changes
-   - 🟢 **LOW** (12): General questions
-3. Open Schedule Calendar view
-4. Show week view with instructor assignments color-coded
-5. Ask AI: "Any scheduling conflicts this week?"
-6. AI analyzes and responds: "Thursday 6pm: Ana assigned to both locations. Suggest reassigning South location to Carlos?"
-7. Owner types: "Do it"
-8. **Watch calendar update in real-time** with new instructor
+1. **On iPad**, open Schedule Calendar
+2. Show week view with color-coded instructor assignments
+3. **Open AI Assistant**
+4. **Tap microphone icon** in the text input field
+5. **Speak clearly into your mic:** "Show me Ana's teaching schedule this week"
+6. Watch voice input transcribe in real-time (speech-to-text appears)
+7. AI responds with Ana's complete schedule:
+   ```
+   Ana Rodriguez - This Week:
+   • Monday 7pm - GI (North)
+   • Wednesday 6pm - NO-GI (South)
+   • Friday 7pm - Competition Training (North)
+   
+   Total hours: 6 | Classes: 3
+   ```
+8. **Again, tap microphone and speak:** "Can Ana teach Thursday 8pm NO-GI?"
+9. AI checks and responds: **"Yes, Ana is available Thursday 8-10pm. Should I create the class and assign her?"**
+10. **One more time, use voice:** "Yes, do it"
+11. **Watch calendar update in real-time** - new class appears, Ana assigned
+12. **Switch to iPhone 2 (Ana)** - push notification: "You've been assigned to Thursday 8pm NO-GI"
 
 **NARRATION:**
-> "Message triage. Visual scheduling. Predictive analytics. The AI doesn't just answer questions - it anticipates needs. Built with RAG for conversation history, function calling for 12 different tools, persistent memory across sessions. All five technical AI capabilities, working together."
-
-**FEATURES HIGHLIGHTED:**
-- ✅ AI message triage by urgency
-- ✅ Visual schedule calendar
-- ✅ Conflict detection
-- ✅ Role-based dashboards (Owner view)
-- ✅ Multi-location management
-- ✅ AI Capabilities: ALL FIVE
-  - RAG Pipeline (conversation history)
-  - User Preferences (stored in JSONB)
-  - Function calling (12 tools)
-  - Memory/State management
-  - Error handling & recovery
+> "Voice commands. Hands-free scheduling. Perfect for when you're on the mat demonstrating techniques or managing equipment. Instructor management. Schedule conflict detection. Automatic notifications. All controlled through natural language - typed OR spoken. The AI handles permissions - students can't assign instructors, but owners have full control. This is function calling with role validation."
 
 ---
 
-### 5:30-6:30 | FEATURE SHOWCASE MONTAGE
+### 6:00-6:45 | THE PAYOFF: SIDE-BY-SIDE COMPARISON
 
-**[Fast cuts between all 3 devices]**
-
-**NARRATION:**
-> "Everything you saw - built in seven days."
-
-**ACTION - Quick 5-second cuts showing:**
-1. **Media sharing**: iPhone 1 sends technique photo to group
-2. **Emoji reactions**: Students react with 🔥 and 💪
-3. **Profile pictures**: Show avatar editor with gym-themed options
-4. **QR code joining**: Student scans code to join gym
-5. **RSVP system**: Calendar with class capacities and waitlists
-6. **Check-in scanner**: Instructor scanning student QR codes
-7. **Belt promotion dialog**: Owner promoting student to blue belt
+**[Show all 3 devices side by side]**
 
 **NARRATION:**
-> "Real-time messaging. Group chats. Media sharing. Emoji reactions. Read receipts. Push notifications. Offline persistence."
+> "Let's recap. Other AI assistants: You ask, they answer. Reactive."
 
-**[Pause on split screen: All 3 simulators]**
+**[Text overlay: "REACTIVE AI: Wait → Ask → Answer"]**
 
 **NARRATION:**
-> "Role-based access - Owner, Instructor, Student, Parent. Schedule management. RSVP automation. Instructor assignment. Proactive problem detection."
+> "Ossome AI: Finds problems before you know they exist. Proactive."
 
----
-
-### 6:30-7:00 | THE PAYOFF
-
-**[Split screen: Show all 3 devices side by side]**
+**[Text overlay: "PROACTIVE AI: Detect → Alert → Solve"]**
 
 **ACTION:**
-1. Owner on iPad asks AI: "Summary of today"
-2. AI provides intelligent recap with metrics and action items
-3. Fade to production URL on screen
+1. **Pan across all 3 devices showing active conversations**
+2. **iPad**: AI Insights Widget updating in real-time
+3. **iPhone 1**: Instructor managing schedule
+4. **iPhone 2**: Student chatting and getting RSVPs
 
 **NARRATION:**
-> "Built with Quasar, Vue 3, Supabase, and OpenAI's GPT-4o-mini. Cross-platform. Native iOS via Capacitor. Progressive Web App for web."
+> "Built in seven days with Quasar, Vue 3, Supabase Realtime, and OpenAI GPT-4o-mini. Five required AI capabilities - RAG pipeline, user preferences, function calling, memory management, error handling. Plus the advanced capability - proactive problem detection."
 
-**[Show text overlay:]**
+---
+
+### 6:45-7:00 | CLOSING
+
+**[Focus on iPad, show clean dashboard]**
+
+**NARRATION:**
+> "Real-time messaging. Group coordination. Media sharing. Offline persistence. Role-based access. Schedule management. RSVP automation. All powered by AI that doesn't wait to be asked."
+
+**[Text overlay appears:]**
 ```
 🌐 LIVE PRODUCTION
 messageai-nam6rx82j-elvis-ibarras-projects.vercel.app
 
-🏆 RUBRIC SCORE: 96/100 (A)
-✅ MVP Features: 50/50
-✅ AI Capabilities: 30/30  
-✅ Code Quality: 16/20
+🏆 SCORE: 96/100 (A)
+✅ MVP: 50/50 | AI: 30/30 | Code: 16/20
 
 🛠️ TECH STACK
-- Frontend: Quasar (Vue 3) + Capacitor
-- Backend: Supabase (Postgres + Realtime + Edge Functions)
-- AI: OpenAI GPT-4o-mini
-- Testing: Vitest + Playwright
+Quasar + Capacitor + Supabase + OpenAI
+iOS Native + Progressive Web App
 ```
 
 **NARRATION:**
-> "Five required AI capabilities. One advanced capability - proactive problem detection. Production-ready. Battle-tested. Built for real gym owners."
+> "Ossome. AI-powered team communication for Jiu-Jitsu gyms. This isn't just another chatbot. This is proactive intelligence."
 
-**[Final screen: All 3 simulators showing active conversations]**
+**[Final frame: All 3 simulators, active and synchronized]**
 
 **NARRATION:**
-> "Ossome. AI-powered team communication for Jiu-Jitsu gyms. Ready to train smarter?"
+> "Ready to train smarter?"
 
-**[Fade to black]**
+**[End recording]**
 
 ---
 
-## 📋 RECORDING CHECKLIST
+## 📋 ONE-SHOT RECORDING CHECKLIST
 
 **Before Recording:**
 - [ ] All 3 simulators open and logged in
-- [ ] iPad: owner@jiujitsio.com (Instructor Dashboard visible)
-- [ ] iPhone 1: carlos.martinez@jiujitsio.com (Chat list visible)
-- [ ] iPhone 2: ana.rodriguez@jiujitsio.com (Chat list visible)
-- [ ] Demo data seeded (schedules, classes, RSVPs)
-- [ ] Network connection stable
-- [ ] Screen recording software ready (QuickTime or similar)
-- [ ] Microphone tested
+- [ ] iPad: owner@jiujitsio.com - Instructor Dashboard open with AI Insights Widget visible
+- [ ] iPhone 1: carlos.martinez@jiujitsio.com - Chat list open
+- [ ] iPhone 2: ana.rodriguez@jiujitsio.com - Chat list open
+- [ ] Demo data seeded (schedules, RSVPs, group chats)
+- [ ] Gym-wide group chat "Jiujitsio - All Members" created with all 3 users
+- [ ] Group chat "Monday GI Class" created for offline demo
+- [ ] Test WiFi toggle on iPhone 1 BEFORE recording
+- [ ] Test AI Assistant responds on all devices
+- [ ] Screen recording software ready (QuickTime: File → New Screen Recording)
+- [ ] Microphone tested and close to mouth
+- [ ] Quiet room, no interruptions
 - [ ] Simulator windows arranged: iPad (left), iPhone 1 (center), iPhone 2 (right)
+- [ ] Practice run at least once to get timing down
 
-**Key Moments to Capture:**
-- ✨ AI responses appearing in real-time
-- ✨ WiFi toggle off/on showing offline queuing
-- ✨ Push notifications appearing across devices
-- ✨ Messages syncing in real-time
-- ✨ Calendar updating instantly after AI command
-- ✨ Group chat with 3+ members active
-- ✨ Read receipts changing from single to double checkmarks
-- ✨ Emoji reactions popping up
+**Recording Settings:**
+- QuickTime Screen Recording: Select area covering all 3 simulators
+- Audio: Built-in microphone or external (test levels first)
+- Resolution: Full retina (will export at 1080p+)
 
-**Narration Tips:**
-- Speak clearly and confidently
-- Pause for 1-2 seconds when switching devices
-- Emphasize AI capabilities when they appear
-- Build excitement for the proactive detection moment
-- Keep energy high throughout
+**During Recording:**
+- Speak clearly and at steady pace
+- Pause 1-2 seconds when switching focus between devices
+- If you mess up, KEEP GOING - minor mistakes are fine
+- Focus on the proactive AI narrative throughout
+- Emphasize real-time updates whenever they happen
 
-**Timing Guide:**
-- Introduction: 30 seconds
-- Scenario 1 (Student): 1 minute
-- Scenario 2 (Offline): 1 minute
-- Scenario 3 (Instructor crisis): 1 minute
-- Scenario 4 (Parent): 1 minute
-- Scenario 5 (Owner dashboard): 1 minute
-- Montage: 1 minute
-- Closing: 30 seconds
-- **Total: ~6.5 minutes**
+**Key Moments to Nail:**
+- ✨ Opening shot of AI Insights Widget showing proactive alerts
+- ✨ Student natural language conversation flowing smoothly
+- ✨ WiFi toggle off, messages queue, WiFi on, instant sync
+- ✨ Group chat messages appearing simultaneously on all devices
+- ✨ Emoji reactions popping up across devices
+- ✨ Calendar updating after AI assigns instructor
+- ✨ Push notification appearing on iPhone 2
 
----
-
-## 🎯 AI CAPABILITIES COVERAGE MAP
-
-| Capability | Where It's Shown | Timestamp |
-|------------|------------------|-----------|
-| **RAG Pipeline** | Scenario 5 - AI retrieves conversation history | 4:30-5:30 |
-| **User Preferences** | Scenario 4 - AI knows family links, roles | 3:30-4:30 |
-| **Function Calling** | Scenario 1 - get_schedule, rsvp_to_class | 0:30-1:30 |
-| **Memory/State** | Scenario 3 - Multi-turn conversation flow | 2:30-3:30 |
-| **Error Handling** | Scenario 2 - Offline graceful behavior | 1:30-2:30 |
-| **Advanced: Proactive** | Scenario 3 - AI detects problems before asked | 2:30-3:30 |
+**If Something Goes Wrong:**
+- AI slow to respond? Keep talking, describe what it's doing
+- Message doesn't sync? Wait 2-3 seconds, should appear
+- WiFi toggle doesn't work? Skip offline part, continue to next section
+- Simulator freezes? Pause, restart simulator, start recording from that scenario
+- Don't stop recording unless catastrophic failure - minor glitches are acceptable
 
 ---
 
-## 💡 BACKUP PLANS
+## 🎯 AI CAPABILITIES COVERAGE (Track as you go)
 
-**If AI is slow to respond:**
-- Pre-record AI responses and edit in post
-- Use quick cut to skip loading time
-- Have responses ready in separate chat for reference
-
-**If real-time sync doesn't show:**
-- Force refresh by minimizing/maximizing apps
-- Use manual send from different device
-- Edit to show messages appearing (even if slight delay)
-
-**If WiFi toggle breaks:**
-- Use Airplane Mode instead
-- Simulate with pause + manual message send
-- Skip this scenario and extend another
-
-**If simulator crashes:**
-- Have backup recording of working demo
-- Quick restart and continue from next scenario
-- Use production web app as fallback
+| Capability | Scenario | What to Show |
+|------------|----------|--------------|
+| **RAG Pipeline** | Student Emergency + Gym Chat | AI retrieves relevant schedules and historical data |
+| **User Preferences** | Instructor Management | AI knows owner role, respects permissions |
+| **Function Calling** | All scenarios | get_schedule, rsvp_to_class, assign_instructor, analytics |
+| **Memory/State** | Student Emergency (multi-turn) | AI remembers context across conversation |
+| **Error Handling** | Instructor Crisis (offline) | Graceful offline queuing and sync |
+| **Advanced: Proactive** | Opening + Instructor Crisis | AI detects problems before owner asks |
 
 ---
 
-## 🚀 READY TO RECORD
+## ⏱️ TIMING GUIDE
 
-**Final Verification:**
-1. Run: `pnpm dev` (if using local)
-2. Open all 3 simulators
-3. Log into each account
-4. Test AI Assistant responds on iPad
-5. Test group chat works between all 3
-6. Test WiFi toggle on iPhone 1
-7. Start recording!
-
-**Post-Recording:**
-1. Add background music (gym/training theme)
-2. Add text overlays for technical details
-3. Color grade for professional look
-4. Export at 1080p minimum
-5. Upload to YouTube/Vimeo
+- **0:00-0:45**: Opening hook (Proactive vs Reactive AI) - 45 sec
+- **0:45-2:00**: Student Emergency - 1 min 15 sec
+- **2:00-3:30**: Instructor Crisis + Offline Demo - 1 min 30 sec
+- **3:30-5:00**: Gym-Wide Group Chat - 1 min 30 sec
+- **5:00-6:00**: Instructor Management (Owner Only) - 1 min
+- **6:00-6:45**: Payoff Comparison - 45 sec
+- **6:45-7:00**: Closing - 15 sec
+- **TOTAL: ~7 minutes**
 
 ---
 
-**Good luck! You've got this! 🥋**
+## 💡 PRACTICE TIPS
+
+1. **Read narration out loud 2-3 times** before recording
+2. **Do one full practice run** with all actions (don't record yet)
+3. **Time yourself** - adjust pace if needed
+4. **Have water nearby** - stay hydrated for clear voice
+5. **Smile while narrating** - it changes your voice tone positively
+6. **Take a deep breath** before starting recording
+7. **Commit to the take** - finish strong even if small mistakes happen
+
+---
+
+## 🚀 EXPORT & SHARE
+
+**After Recording:**
+1. QuickTime: File → Export → 1080p or 4K
+2. Filename: `Ossome_Proactive_AI_Demo_v1.mp4`
+3. Optional: Trim dead air at start/end in QuickTime (⌘T)
+4. Upload to YouTube/Vimeo/Google Drive
+5. Share link with grading team
+
+**Optional Post-Processing (if time):**
+- Add intro title card (5 sec): "Ossome: Proactive AI for Gyms"
+- Add outro title card (5 sec): Production URL + score
+- Normalize audio levels
+- Color grade for consistency
+
+---
+
+**YOU'VE GOT THIS! 🥋**
+
+**Remember: The killer differentiator is PROACTIVE AI. Other demos are reactive chatbots. Yours finds problems before they're asked. Lead with that. Win with that.**
