@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "cd messageAI-Quasar && rm -f pnpm-lock.yaml && npm ci && npx quasar build -m pwa",
-  "outputDirectory": "messageAI-Quasar/dist/pwa",
+  "buildCommand": "cd messageAI-Quasar && rm -f pnpm-lock.yaml && npm ci && npx quasar build -m spa",
+  "outputDirectory": "messageAI-Quasar/dist/spa",
   "installCommand": "cd messageAI-Quasar && npm install",
   "routes": [
     {
