@@ -49,6 +49,7 @@
                   <span class="text-subtitle2 class-title" :class="{ 'text-strike': schedule.is_cancelled }">
                     {{ getClassTitle(schedule) }}
                   </span>
+                  <q-badge v-if="schedule.gym_name" :color="getGymColor(schedule.gym_id)" :label="schedule.gym_name" class="q-ml-xs" />
                   <q-badge v-if="schedule.is_cancelled" color="negative" label="CANCELLED" class="q-ml-xs" />
                   <q-badge 
                     v-if="hasAvailabilityConflict(schedule) && !schedule.is_cancelled" 
@@ -111,6 +112,7 @@
       <q-tab-panel name="month" class="q-pa-none">
         <ScheduleMonthView
           :gym-id="gymId"
+          :filtered-instructor-id="filteredInstructorId"
           @view-class="viewInstance"
         />
       </q-tab-panel>
@@ -119,6 +121,7 @@
       <q-tab-panel name="week" class="q-pa-none">
         <ScheduleWeekView
           :gym-id="gymId"
+          :filtered-instructor-id="filteredInstructorId"
           @view-class="viewInstance"
         />
       </q-tab-panel>
@@ -320,7 +323,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useSchedule } from '../composables/useSchedule';
 import { useRoles } from '../composables/useRoles';
@@ -331,9 +334,11 @@ import ScheduleMonthView from './ScheduleMonthView.vue';
 import ScheduleWeekView from './ScheduleWeekView.vue';
 
 const props = defineProps<{
-  gymId: string;
+  gymId: string | string[]; // Single gym ID or array for multi-gym
   editable?: boolean;
   filteredInstructorId?: string;
+  externalSchedules?: any[]; // Pre-filtered schedules from parent (for multi-gym filtering in Template view)
+  selectedGymCount?: number; // Number of gyms selected in filter
 }>();
 
 const emit = defineEmits<{
@@ -342,8 +347,37 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
-const { schedulesByDay, loading, fetchSchedules, deleteSchedule } = useSchedule();
+const { schedulesByDay: internalSchedulesByDay, loading, fetchSchedules, deleteSchedule } = useSchedule();
 const { isOwner, isInstructor, canRSVPToClasses } = useRoles();
+
+// Use external schedules if provided, otherwise use internal
+const schedulesByDay = computed(() => {
+  if (props.externalSchedules) {
+    console.log('📅 ScheduleCalendar using external schedules:', props.externalSchedules.length);
+    // Group external schedules by day
+    const byDay: Record<string, any[]> = {
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
+      Saturday: [],
+      Sunday: []
+    };
+    
+    props.externalSchedules.forEach(schedule => {
+      const day = schedule?.day_of_week;
+      if (day && day in byDay) {
+        byDay[day]?.push(schedule);
+      }
+    });
+    
+    console.log('📅 Grouped by day:', Object.entries(byDay).map(([day, scheds]) => `${day}: ${scheds.length}`).join(', '));
+    return byDay;
+  }
+  console.log('📅 ScheduleCalendar using internal schedules');
+  return internalSchedulesByDay.value;
+});
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const currentView = ref('month');
@@ -354,6 +388,15 @@ const selectedInstance = ref<ClassInstance | null>(null);
 
 const canRsvp = computed(() => canRSVPToClasses.value);
 const canDelete = computed(() => isOwner.value);
+
+// Assign consistent colors to gyms
+const gymColors = ['purple', 'teal', 'orange', 'pink', 'indigo', 'cyan', 'amber', 'lime'];
+function getGymColor(gymId: string): string {
+  if (!gymId) return 'grey';
+  // Use gym ID to generate consistent color index
+  const hash = gymId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return gymColors[hash % gymColors.length];
+}
 
 function canEdit(schedule: any) {
   if (isOwner.value) return true;
@@ -607,11 +650,14 @@ function viewInstance(instance: ClassInstance) {
 }
 
 onMounted(() => {
-  const filters: any = { gym_id: props.gymId };
-  if (props.filteredInstructorId) {
-    filters.instructor_id = props.filteredInstructorId;
+  // Only fetch if external schedules not provided
+  if (!props.externalSchedules) {
+    const filters: any = { gym_id: props.gymId };
+    if (props.filteredInstructorId) {
+      filters.instructor_id = props.filteredInstructorId;
+    }
+    void fetchSchedules(filters);
   }
-  void fetchSchedules(filters);
 });
 </script>
 

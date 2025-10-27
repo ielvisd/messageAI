@@ -87,6 +87,14 @@
                 <div class="class-type">
                   {{ instance.class_type }}
                   <q-badge 
+                    v-if="instance.gym_name" 
+                    :label="instance.gym_name" 
+                    :color="getGymColor(instance.gym_id)"
+                    text-color="white"
+                    class="q-ml-xs"
+                    style="font-size: 0.6rem;"
+                  />
+                  <q-badge 
                     v-if="instance.is_cancelled" 
                     label="X" 
                     color="negative"
@@ -118,13 +126,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onActivated } from 'vue';
 import { date as dateUtil } from 'quasar';
 import type { ClassInstance } from '../composables/useClassInstances';
 import { useClassInstances } from '../composables/useClassInstances';
 
 const props = defineProps<{
-  gymId: string;
+  gymId: string | string[];
+  filteredInstructorId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -162,7 +171,11 @@ const weekDays = computed(() => {
       fullDate: date,
       isToday: dateString === today,
       instances: instances.value
-        .filter(i => i.date === dateString)
+        .filter(i => {
+          if (i.date !== dateString) return false;
+          if (props.filteredInstructorId && i.instructor_id !== props.filteredInstructorId) return false;
+          return true;
+        })
         .sort((a, b) => a.start_time.localeCompare(b.start_time))
     });
   }
@@ -226,6 +239,14 @@ function getClassCardStyle(instance: ClassInstance) {
   };
 }
 
+// Assign consistent colors to gyms
+const gymColors = ['purple', 'teal', 'orange', 'pink', 'indigo', 'cyan', 'amber', 'lime'];
+function getGymColor(gymId: string): string {
+  if (!gymId) return 'grey';
+  const hash = gymId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return gymColors[hash % gymColors.length];
+}
+
 function previousWeek() {
   currentWeekStart.value = dateUtil.subtractFromDate(currentWeekStart.value, { days: 7 });
 }
@@ -250,11 +271,20 @@ function viewClassDetails(instance: ClassInstance) {
   emit('view-class', instance);
 }
 
-// Load instances when week changes
-watch(currentWeekStart, async () => {
+// Refetch function
+async function refreshData() {
   const weekEnd = dateUtil.addToDate(currentWeekStart.value, { days: 6 });
   await fetchInstances(props.gymId, currentWeekStart.value, weekEnd);
-}, { immediate: true });
+}
+
+// Load instances when week changes
+watch(currentWeekStart, refreshData, { immediate: true });
+watch(() => props.gymId, refreshData);
+
+// Refetch when component becomes visible (fixes stale data after AI assignments)
+onActivated(() => {
+  void refreshData();
+});
 </script>
 
 <style scoped>

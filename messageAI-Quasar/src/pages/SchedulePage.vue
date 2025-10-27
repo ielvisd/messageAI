@@ -5,6 +5,30 @@
         <div class="text-h4">Class Schedule</div>
       </div>
 
+      <!-- Gym Filter (for multi-gym users like owners) -->
+      <q-card v-if="showGymFilter" flat bordered class="q-mb-md">
+        <q-card-section>
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2">Filter by Gym</div>
+            <q-btn
+              flat
+              dense
+              size="sm"
+              label="All"
+              color="primary"
+              @click="selectAllGyms"
+            />
+          </div>
+          <q-option-group
+            v-model="writableSelectedGymIds"
+            :options="gymOptions"
+            color="primary"
+            type="checkbox"
+            inline
+          />
+        </q-card-section>
+      </q-card>
+
       <!-- No Gym Message -->
       <div v-if="gyms.length === 0 && !loading" class="text-center q-py-xl">
         <q-icon name="event_busy" size="64px" color="grey-5" class="q-mb-md" />
@@ -37,7 +61,10 @@
       <div v-else>
         <ScheduleCalendar
           v-if="currentGymId"
-          :gym-id="currentGymId"
+          :gym-id="showGymFilter && selectedGymIds.length > 0 ? selectedGymIds : currentGymId"
+          :filtered-instructor-id="instructorFilterId"
+          :external-schedules="showGymFilter ? filteredSchedules : undefined"
+          :selected-gym-count="selectedGymIds.length"
           :editable="canManageSchedule"
           @edit-schedule="openEditDialogById"
           @create-schedule="openCreateDialog"
@@ -77,9 +104,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, watch } from 'vue'
+import { onMounted, computed, watch, ref } from 'vue'
 import { useSchedule } from '../composables/useMultiGymSchedule'
-import { ref } from 'vue'
 import ClassDetailsDialog from '../components/ClassDetailsDialog.vue'
 import ScheduleEditorDialog from '../components/ScheduleEditorDialog.vue'
 import ScheduleCalendar from '../components/ScheduleCalendar.vue'
@@ -97,6 +123,7 @@ const {
   fetchSchedules,
   toggleGymFilter,
   selectAllGyms,
+  clearGymFilters,
   isGymSelected
 } = useSchedule()
 
@@ -114,14 +141,65 @@ const scheduleToEdit = ref<any | null>(null)
 // Check if user can manage schedule
 const canManageSchedule = computed(() => isOwner.value || isInstructor.value)
 
-// Get current gym ID (use first selected gym or first gym)
+// Filter schedule to instructor's classes if they are an instructor
+const instructorFilterId = computed(() => {
+  // Instructors should only see their own classes by default
+  if (isInstructor.value && user.value?.id) {
+    return user.value.id
+  }
+  // Owners see all classes
+  return undefined
+})
+
+// Show gym filter for owners with multiple gyms
+const showGymFilter = computed(() => {
+  return isOwner.value && gyms.value.length > 1
+})
+
+// Format gyms for QOptionGroup
+const gymOptions = computed(() => {
+  return gyms.value.map(gym => ({
+    label: gym.name,
+    value: gym.id
+  }))
+})
+
+// Writable computed for v-model binding with QOptionGroup
+const writableSelectedGymIds = computed({
+  get: () => selectedGymIds.value,
+  set: (newVal: string[]) => {
+    console.log('📝 Setting gym selection:', newVal)
+    // Clear and rebuild selection
+    clearGymFilters()
+    newVal.forEach(gymId => {
+      toggleGymFilter(gymId)
+    })
+  }
+})
+
+// Watch filtered schedules to see when they change
+watch(filteredSchedules, (newSchedules) => {
+  console.log('📊 Filtered schedules changed:', newSchedules.length, 'schedules')
+  console.log('   Gyms:', [...new Set(newSchedules.map(s => s.gym_name))].join(', '))
+}, { deep: true })
+
+// Get current gym ID
 const currentGymId = computed(() => {
+  // For instructors, always use their profile gym_id
+  if (isInstructor.value && profile.value?.gym_id) {
+    console.log('🏢 currentGymId (instructor):', profile.value.gym_id)
+    return profile.value.gym_id
+  }
+  // For owners/others, use selected gym or first gym
   if (selectedGymIds.value.length > 0) {
+    console.log('🏢 currentGymId (selected):', selectedGymIds.value[0], 'from', selectedGymIds.value)
     return selectedGymIds.value[0]
   }
   if (gyms.value.length > 0) {
+    console.log('🏢 currentGymId (default):', gyms.value[0].id)
     return gyms.value[0].id
   }
+  console.log('🏢 currentGymId: none')
   return ''
 })
 

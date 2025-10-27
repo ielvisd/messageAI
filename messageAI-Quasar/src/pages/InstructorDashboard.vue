@@ -1,40 +1,41 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-gutter-md">
-      <div class="text-h4 q-mb-lg">My Classes</div>
-      
-      <div class="row items-center q-gutter-sm q-mb-md">
-        <q-btn
-          color="primary"
-          label="View Class Rosters"
-          icon="people"
-          @click="$router.push('/class-roster')"
-          outline
-        />
-        <q-btn
-          v-if="canEditSchedule"
-          icon="add"
-          label="Create"
-          color="primary"
-          @click="showCreateMenu = true"
-        >
-          <q-menu v-model="showCreateMenu">
-            <q-list style="min-width: 200px">
-              <q-item clickable v-close-popup @click="showScheduleEditor = true">
-                <q-item-section avatar>
-                  <q-icon name="event_repeat" />
-                </q-item-section>
-                <q-item-section>Recurring Class</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="showInstanceEditor = true">
-                <q-item-section avatar>
-                  <q-icon name="event" />
-                </q-item-section>
-                <q-item-section>One-Time Event</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
+      <div class="row items-center justify-between q-mb-md">
+        <div class="text-h4">My Teaching Schedule</div>
+        <div class="row q-gutter-sm">
+          <q-btn
+            color="primary"
+            label="Class Rosters"
+            icon="people"
+            @click="$router.push('/class-roster')"
+            outline
+          />
+          <q-btn
+            v-if="canEditSchedule"
+            icon="add"
+            label="Create Class"
+            color="primary"
+            @click="showCreateMenu = true"
+          >
+            <q-menu v-model="showCreateMenu">
+              <q-list style="min-width: 200px">
+                <q-item clickable v-close-popup @click="showScheduleEditor = true">
+                  <q-item-section avatar>
+                    <q-icon name="event_repeat" />
+                  </q-item-section>
+                  <q-item-section>Recurring Class</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="showInstanceEditor = true">
+                  <q-item-section avatar>
+                    <q-icon name="event" />
+                  </q-item-section>
+                  <q-item-section>One-Time Event</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -46,15 +47,15 @@
         indicator-color="primary"
         align="left"
       >
-        <q-tab name="schedule" label="Schedule" />
-        <q-tab name="groups" label="Class Groups" />
+        <q-tab name="schedule" label="My Schedule" icon="calendar_month" />
+        <q-tab name="groups" label="Class Groups" icon="groups" />
       </q-tabs>
 
       <q-separator />
 
       <q-tab-panels v-model="tab" animated>
         <!-- Schedule Tab -->
-        <q-tab-panel name="schedule">
+        <q-tab-panel name="schedule" class="q-pa-none">
           <ScheduleCalendar
             :key="scheduleKey"
             :gym-id="gymId"
@@ -181,7 +182,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { user } from '../state/auth';
+import { user, profile } from '../state/auth';
 import { supabase } from '../boot/supabase';
 import { useGroupManagement } from '../composables/useGroupManagement';
 import { useGymSettings } from '../composables/useGymSettings';
@@ -192,10 +193,10 @@ import { Notify } from 'quasar';
 
 const router = useRouter();
 
-const gymId = computed(() => (user.value as any)?.gym_id || '');
+const gymId = computed(() => profile.value?.gym_id || '');
 const userId = computed(() => user.value?.id || '');
 
-const { settings, fetchSettings } = useGymSettings(gymId.value);
+const { settings, fetchSettings } = useGymSettings();
 const { addMembers, getEligibleStudents } = useGroupManagement();
 
 const tab = ref('schedule');
@@ -302,9 +303,16 @@ async function confirmAddMembers() {
 }
 
 onMounted(() => {
-  if (gymId.value) {
-    void fetchSettings(gymId.value);
+  const id = gymId.value;
+  if (id) {
+    console.log('✅ InstructorDashboard mounted with gym_id:', id);
+    void fetchSettings(id);
     void loadClassGroups();
+  } else {
+    console.error('❌ InstructorDashboard: No gym_id available on mount!', {
+      profile: profile.value,
+      user: user.value
+    });
   }
 });
 </script>

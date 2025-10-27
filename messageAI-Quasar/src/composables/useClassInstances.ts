@@ -5,6 +5,7 @@ import { supabase } from '../boot/supabase';
 export interface ClassInstance {
   id?: string;
   gym_id: string;
+  gym_name?: string | undefined;
   schedule_id?: string | null;
   date: string; // YYYY-MM-DD format
   start_time: string;
@@ -28,6 +29,7 @@ export interface ClassInstance {
 interface Schedule {
   id: string;
   gym_id: string;
+  gym_name?: string;
   day_of_week: string;
   start_time: string;
   end_time: string;
@@ -90,6 +92,7 @@ export function useClassInstances() {
       
       const instance: ClassInstance = {
         gym_id: schedule.gym_id,
+        gym_name: schedule.gym_name ?? undefined,
         schedule_id: schedule.id,
         date: dateString,
         start_time: schedule.start_time,
@@ -118,14 +121,25 @@ export function useClassInstances() {
   }
   
   /**
-   * Fetch class instances for a gym within a date range
+   * Fetch class instances for one or more gyms within a date range
    * Combines generated recurring instances with database overrides
    */
   async function fetchInstances(
-    gymId: string,
+    gymId: string | string[],
     startDate: Date,
     endDate: Date
   ): Promise<ClassInstance[]> {
+    // Handle multiple gyms
+    if (Array.isArray(gymId)) {
+      const allInstances: ClassInstance[] = [];
+      for (const id of gymId) {
+        const instances = await fetchInstances(id, startDate, endDate);
+        allInstances.push(...instances);
+      }
+      return allInstances;
+    }
+    
+    // Single gym logic below
     try {
       loading.value = true;
       error.value = null;
@@ -133,7 +147,16 @@ export function useClassInstances() {
       const startDateStr = dateUtil.formatDate(startDate, 'YYYY-MM-DD');
       const endDateStr = dateUtil.formatDate(endDate, 'YYYY-MM-DD');
       
-      // 1. Fetch recurring schedules
+      // 1. Fetch gym name
+      const { data: gymData } = await supabase
+        .from('gyms')
+        .select('name')
+        .eq('id', gymId)
+        .single();
+      
+      const gymName = gymData?.name;
+      
+      // 2. Fetch recurring schedules
       const { data: schedules, error: schedulesError } = await supabase
         .from('gym_schedules')
         .select('*')
@@ -142,9 +165,15 @@ export function useClassInstances() {
       
       if (schedulesError) throw schedulesError;
       
-      // 2. Generate instances from recurring schedules
+      // 3. Add gym_name to each schedule
+      const schedulesWithGym = (schedules || []).map(schedule => ({
+        ...schedule,
+        gym_name: gymName
+      }));
+      
+      // 4. Generate instances from recurring schedules
       const generatedInstances: ClassInstance[] = [];
-      (schedules || []).forEach(schedule => {
+      schedulesWithGym.forEach(schedule => {
         const generated = generateInstancesFromSchedule(schedule, startDate, endDate);
         generatedInstances.push(...generated);
       });
@@ -162,9 +191,10 @@ export function useClassInstances() {
       
       if (instancesError) throw instancesError;
       
-      // 4. Map database instances with instructor names
+      // 4. Map database instances with instructor names and gym name
       const mappedDbInstances: ClassInstance[] = (dbInstances || []).map(instance => ({
         ...instance,
+        gym_name: gymName,
         instructor_name: (instance.profiles)?.name,
         is_cancelled: instance.is_cancelled || false,
         is_override: instance.is_override || false

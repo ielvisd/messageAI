@@ -1,6 +1,6 @@
 # Ossome - AI-Powered Team Communication for Jiu-Jitsu Gyms
 
-**Production URL:** https://messageai-nam6rx82j-elvis-ibarras-projects.vercel.app
+**Production URL:** https://messageai-five.vercel.app/#/
 
 Ossome is a WhatsApp-inspired cross-platform messaging app built with Quasar (Vue 3) and Supabase, targeting Jiu-Jitsu gym owners and teams. Features include real-time chat, group messaging, media sharing, role-based access, and an AI assistant that handles schedule queries, RSVP management, and proactive problem detection.
 

@@ -55,6 +55,8 @@ export function useSchedule() {
       loading.value = true
       error.value = null
 
+      console.log('🔍 useSchedule.fetchSchedules called with filters:', filters)
+
       let query = supabase
         .from('gym_schedules')
         .select(`
@@ -76,12 +78,29 @@ export function useSchedule() {
 
       if (fetchError) throw fetchError
       
-      // Flatten the instructor preferences into the schedule object
-      const flattenedData = (data || []).map((schedule: any) => ({
-        ...schedule,
-        instructor_preferences: schedule.profiles?.instructor_preferences || null
-      }))
+      console.log(`✅ useSchedule.fetchSchedules returned ${data?.length || 0} schedules:`, data)
       
+      // Flatten the instructor preferences into the schedule object and fetch gym name
+      const schedulePromises = (data || []).map(async (schedule: any) => {
+        // Fetch gym name if not already present
+        let gym_name = schedule.gym_name;
+        if (!gym_name && schedule.gym_id) {
+          const { data: gymData } = await supabase
+            .from('gyms')
+            .select('name')
+            .eq('id', schedule.gym_id)
+            .single();
+          gym_name = gymData?.name;
+        }
+        
+        return {
+          ...schedule,
+          instructor_preferences: schedule.profiles?.instructor_preferences || null,
+          gym_name
+        };
+      });
+      
+      const flattenedData = await Promise.all(schedulePromises);
       schedules.value = flattenedData
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch schedules'

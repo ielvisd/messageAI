@@ -418,10 +418,12 @@ async function navigateToDM(instructorId: string) {
     
     if (hasExistingChat) {
       // Find the existing chat and navigate to it
+      // Only look for direct message chats (not group or gym chats)
       const { data: chats, error } = await supabase
         .from('chat_members')
         .select('chat_id, chats!inner(id, type)')
-        .eq('user_id', user.value.id);
+        .eq('user_id', user.value.id)
+        .eq('chats.type', 'direct');
       
       if (error) throw error;
       
@@ -433,7 +435,8 @@ async function navigateToDM(instructorId: string) {
           .eq('chat_id', chatMember.chat_id);
         
         const memberIds = members?.map(m => m.user_id) || [];
-        if (memberIds.includes(instructorId) && memberIds.includes(user.value.id)) {
+        // Direct chats should have exactly 2 members
+        if (memberIds.length === 2 && memberIds.includes(instructorId) && memberIds.includes(user.value.id)) {
           await router.push(`/chat/${chatMember.chat_id}`);
           return;
         }

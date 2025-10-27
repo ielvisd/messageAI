@@ -73,7 +73,7 @@
         </q-item-label>
 
         <!-- Unified Navigation -->
-        <q-item clickable @click="navigate('/')">
+        <q-item clickable @click="navigateToDashboard">
           <q-item-section avatar>
             <q-icon name="dashboard" />
           </q-item-section>
@@ -180,6 +180,17 @@ function toggleLeftDrawer() {
 
 function navigate(path: string) {
   void router.push(path)
+  leftDrawerOpen.value = false
+}
+
+function navigateToDashboard() {
+  // Route to appropriate dashboard based on role
+  const role = userRole.value
+  if (role === 'instructor') {
+    void router.push('/instructor-dashboard')
+  } else {
+    void router.push('/home')
+  }
   leftDrawerOpen.value = false
 }
 

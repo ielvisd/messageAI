@@ -34,8 +34,9 @@ const selectedGymIds = ref<string[]>([])
 
 // Computed filtered schedules based on selected gyms
 const filteredSchedules = computed(() => {
+  // If no gyms selected, return empty (not all)
   if (selectedGymIds.value.length === 0) {
-    return schedules.value
+    return []
   }
   return schedules.value.filter(schedule => 
     selectedGymIds.value.includes(schedule.gym_id)

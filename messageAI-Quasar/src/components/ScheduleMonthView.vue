@@ -116,9 +116,15 @@
                 <q-item-label :class="{ 'text-strike': instance.is_cancelled }">
                   {{ instance.class_type }}
                   <q-badge 
+                    v-if="instance.gym_name" 
+                    :label="instance.gym_name" 
+                    :color="getGymColor(instance.gym_id)"
+                    class="q-ml-xs"
+                  />
+                  <q-badge 
                     v-if="instance.event_type !== 'class'" 
                     :label="instance.event_type" 
-                    color="purple"
+                    color="info"
                     class="q-ml-xs"
                   />
                   <q-badge 
@@ -183,13 +189,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onActivated } from 'vue';
 import { date as dateUtil, useQuasar } from 'quasar';
 import type { ClassInstance } from '../composables/useClassInstances';
 import { useClassInstances } from '../composables/useClassInstances';
 
 const props = defineProps<{
-  gymId: string;
+  gymId: string | string[];
+  filteredInstructorId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -267,7 +274,11 @@ const monthDates = computed(() => {
       day,
       isCurrentMonth: true,
       isToday: dateString === today,
-      instances: instances.value.filter(i => i.date === dateString && !i.is_cancelled)
+      instances: instances.value.filter(i => {
+        if (i.date !== dateString || i.is_cancelled) return false;
+        if (props.filteredInstructorId && i.instructor_id !== props.filteredInstructorId) return false;
+        return true;
+      })
     });
   }
   
@@ -293,7 +304,11 @@ const selectedInstances = computed(() => {
   if (!selectedDate.value) return [];
   const dateString = dateUtil.formatDate(selectedDate.value, 'YYYY-MM-DD');
   return instances.value
-    .filter(i => i.date === dateString)
+    .filter(i => {
+      if (i.date !== dateString) return false;
+      if (props.filteredInstructorId && i.instructor_id !== props.filteredInstructorId) return false;
+      return true;
+    })
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 });
 
@@ -332,6 +347,14 @@ function getClassColor(instance: ClassInstance) {
   if (instance.class_type.toLowerCase().includes('no-gi')) return 'red';
   if (instance.class_type.toLowerCase().includes('competition')) return 'deep-orange';
   return 'primary';
+}
+
+// Assign consistent colors to gyms
+const gymColors = ['purple', 'teal', 'orange', 'pink', 'indigo', 'cyan', 'amber', 'lime'];
+function getGymColor(gymId: string): string {
+  if (!gymId) return 'grey';
+  const hash = gymId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return gymColors[hash % gymColors.length];
 }
 
 function getCapacityColor(instance: ClassInstance) {
@@ -375,7 +398,8 @@ function viewClassDetails(instance: ClassInstance) {
 }
 
 // Load instances when month changes
-watch(currentDate, async () => {
+// Refetch function
+async function refreshData() {
   const startOfMonth = dateUtil.startOfDate(currentDate.value, 'month');
   const endOfMonth = dateUtil.endOfDate(currentDate.value, 'month');
   
@@ -384,7 +408,15 @@ watch(currentDate, async () => {
   const endDate = dateUtil.addToDate(endOfMonth, { days: 7 });
   
   await fetchInstances(props.gymId, startDate, endDate);
-}, { immediate: true });
+}
+
+watch(currentDate, refreshData, { immediate: true });
+watch(() => props.gymId, refreshData);
+
+// Refetch when component becomes visible (fixes stale data after AI assignments)
+onActivated(() => {
+  void refreshData();
+});
 </script>
 
 <style scoped>

@@ -127,35 +127,62 @@ const processImage = async (dataUrl: string): Promise<Blob> => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
 
-    img.onload = () => {
-      // Crop to square (center crop)
-      const size = Math.min(img.width, img.height)
-      const x = (img.width - size) / 2
-      const y = (img.height - size) / 2
-
-      // Resize to 512x512 for profile pictures
-      const targetSize = 512
-      canvas.width = targetSize
-      canvas.height = targetSize
-
-      ctx?.drawImage(img, x, y, size, size, 0, 0, targetSize, targetSize)
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error('Failed to process image'))
-          }
-        },
-        'image/jpeg',
-        0.9
-      )
+    if (!ctx) {
+      reject(new Error('Failed to get canvas context'))
+      return
     }
 
-    img.onerror = () => reject(new Error('Failed to load image'))
+    img.onload = () => {
+      try {
+        // Crop to square (center crop)
+        const size = Math.min(img.width, img.height)
+        const x = (img.width - size) / 2
+        const y = (img.height - size) / 2
+
+        // Resize to 512x512 for profile pictures
+        const targetSize = 512
+        canvas.width = targetSize
+        canvas.height = targetSize
+
+        ctx.drawImage(img, x, y, size, size, 0, 0, targetSize, targetSize)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Failed to convert canvas to blob'))
+            }
+          },
+          'image/jpeg',
+          0.9
+        )
+      } catch (err) {
+        console.error('Error processing image:', err)
+        reject(err)
+      }
+    }
+
+    img.onerror = (err) => {
+      console.error('Error loading image:', err)
+      reject(new Error('Failed to load image'))
+    }
+    
+    img.crossOrigin = 'anonymous' // Important for iOS simulator
     img.src = dataUrl
   })
+}
+
+/**
+ * Upload avatar to Supabase storage with timeout
+ */
+const uploadWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Upload timeout')), timeoutMs)
+    )
+  ])
 }
 
 /**
@@ -169,42 +196,74 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
   uploading.value = true
 
   try {
+    console.log('Starting upload process...')
+    console.log('User ID:', user.value.id)
+    console.log('Blob size:', imageBlob.size, 'bytes')
+
     // Delete old avatar if exists
     if (currentAvatarUrl.value) {
+      console.log('Deleting old avatar...')
       const oldPath = currentAvatarUrl.value.split('/').pop()
       if (oldPath) {
-        await supabase.storage
-          .from('profile-avatars')
-          .remove([`${user.value.id}/${oldPath}`])
+        await uploadWithTimeout(
+          supabase.storage
+            .from('profile-avatars')
+            .remove([`${user.value.id}/${oldPath}`]),
+          10000
+        )
       }
     }
 
-    // Upload new avatar
+    // Upload new avatar with timeout
     const fileName = `${user.value.id}/${Date.now()}.jpg`
-    const { error: uploadError } = await supabase.storage
-      .from('profile-avatars')
-      .upload(fileName, imageBlob, {
-        cacheControl: '3600',
-        upsert: false
-      })
+    console.log('Uploading to:', fileName)
+    
+    const uploadResult = await uploadWithTimeout(
+      supabase.storage
+        .from('profile-avatars')
+        .upload(fileName, imageBlob, {
+          cacheControl: '3600',
+          upsert: false
+        }),
+      30000 // 30 second timeout
+    )
 
-    if (uploadError) throw uploadError
+    console.log('Upload result:', uploadResult)
+
+    if (uploadResult.error) {
+      console.error('Upload error:', uploadResult.error)
+      throw uploadResult.error
+    }
 
     // Get public URL
+    console.log('Getting public URL...')
     const { data: urlData } = supabase.storage
       .from('profile-avatars')
       .getPublicUrl(fileName)
 
-    // Update profile
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_url: urlData.publicUrl })
-      .eq('id', user.value.id)
+    console.log('Public URL:', urlData.publicUrl)
 
-    if (updateError) throw updateError
+    // Update profile with timeout
+    console.log('Updating profile...')
+    const updateResult = await uploadWithTimeout(
+      supabase
+        .from('profiles')
+        .update({ avatar_url: urlData.publicUrl })
+        .eq('id', user.value.id),
+      10000
+    )
+
+    console.log('Update result:', updateResult)
+
+    if (updateResult.error) {
+      console.error('Update error:', updateResult.error)
+      throw updateResult.error
+    }
 
     currentAvatarUrl.value = urlData.publicUrl
     emit('avatar-updated', urlData.publicUrl)
+
+    console.log('✅ Avatar upload complete!')
 
     Notify.create({
       type: 'positive',
@@ -216,14 +275,28 @@ const uploadAvatar = async (imageBlob: Blob): Promise<string> => {
     return urlData.publicUrl
   } catch (err) {
     console.error('Error uploading avatar:', err)
+    
+    let errorMessage = 'Failed to upload profile picture'
+    if (err instanceof Error) {
+      if (err.message === 'Upload timeout') {
+        errorMessage = 'Upload timed out. Please check your connection and try again.'
+      } else if (err.message.includes('bucket')) {
+        errorMessage = 'Storage configuration error. Please contact support.'
+      } else {
+        errorMessage = `Upload failed: ${err.message}`
+      }
+    }
+    
     Notify.create({
       type: 'negative',
-      message: 'Failed to upload profile picture',
-      position: 'top'
+      message: errorMessage,
+      position: 'top',
+      timeout: 5000
     })
     throw err
   } finally {
     uploading.value = false
+    console.log('Upload process finished')
   }
 }
 
@@ -242,6 +315,7 @@ const handleTakePhoto = async () => {
   }
 
   try {
+    console.log('Taking photo with camera...')
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.DataUrl,
       source: CameraSource.Camera,
@@ -250,20 +324,33 @@ const handleTakePhoto = async () => {
       saveToGallery: false
     })
 
+    console.log('Photo captured:', photo ? 'success' : 'no photo')
+    
     if (photo.dataUrl) {
+      console.log('Processing image...')
       const processedBlob = await processImage(photo.dataUrl)
+      console.log('Image processed, uploading...')
       await uploadAvatar(processedBlob)
+    } else {
+      console.warn('No dataUrl in photo result')
     }
   } catch (err) {
+    console.error('Error in handleTakePhoto:', err)
     if (err && typeof err === 'object' && 'message' in err) {
       const errorMessage = (err as { message: string }).message
-      if (!errorMessage.includes('cancelled')) {
+      if (!errorMessage.includes('cancelled') && !errorMessage.includes('cancel')) {
         Notify.create({
           type: 'negative',
-          message: 'Failed to capture photo',
+          message: `Failed to capture photo: ${errorMessage}`,
           position: 'top'
         })
       }
+    } else {
+      Notify.create({
+        type: 'negative',
+        message: 'An unexpected error occurred',
+        position: 'top'
+      })
     }
   }
 }
@@ -283,6 +370,7 @@ const handleChoosePhoto = async () => {
   }
 
   try {
+    console.log('Getting photo from gallery...')
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.DataUrl,
       source: CameraSource.Photos,
@@ -290,20 +378,33 @@ const handleChoosePhoto = async () => {
       allowEditing: true
     })
 
+    console.log('Photo received:', photo ? 'success' : 'no photo')
+    
     if (photo.dataUrl) {
+      console.log('Processing image...')
       const processedBlob = await processImage(photo.dataUrl)
+      console.log('Image processed, uploading...')
       await uploadAvatar(processedBlob)
+    } else {
+      console.warn('No dataUrl in photo result')
     }
   } catch (err) {
+    console.error('Error in handleChoosePhoto:', err)
     if (err && typeof err === 'object' && 'message' in err) {
       const errorMessage = (err as { message: string }).message
-      if (!errorMessage.includes('cancelled')) {
+      if (!errorMessage.includes('cancelled') && !errorMessage.includes('cancel')) {
         Notify.create({
           type: 'negative',
-          message: 'Failed to select photo',
+          message: `Failed to select photo: ${errorMessage}`,
           position: 'top'
         })
       }
+    } else {
+      Notify.create({
+        type: 'negative',
+        message: 'An unexpected error occurred',
+        position: 'top'
+      })
     }
   }
 }
